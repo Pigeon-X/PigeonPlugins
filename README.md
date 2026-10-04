@@ -21,9 +21,9 @@
 
 ## 已收录
 
-TShock：AntiCheatingTool、FixTools、TileHelper、CGive、HelpPlus、PlayerReward、CommandTool、PlaceholderAPI、Chameleon、MapTp、StatusTextManager、TeleportRequest、VeinMiner、ProgressBag、ProgressControls、PlayerSpeed、RandomFishingLoot、RandRespawn、PersonalPermission、PerPlayerLoot、SwitchCommands、VotePlus。
+TShock：AntiCheatingTool、FixTools、TileHelper、CGive、HelpPlus、PlayerReward、CommandTool、PlaceholderAPI、Chameleon、MapTp、TeleportRequest、VeinMiner、ProgressBag、ProgressControls、PlayerSpeed、RandomFishingLoot、RandRespawn、PersonalPermission、PerPlayerLoot、SwitchCommands、VotePlus。
 
-TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool、FixTools、145修复小公举、MapTp、TeleportRequest、ProgressBag、ProgressControls、CGive、VeinMiner、StatusTextManager、TileHelper、HotReload。
+TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool、FixTools、145修复小公举、MapTp、TeleportRequest、ProgressBag、ProgressControls、CGive、VeinMiner、TileHelper、HotReload。
 
 ## 初始化提交
 
@@ -39,3 +39,5 @@ TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool�
 ## 外部归属
 
 - CustomPlayer（TShock / TSL）已归入 PGameAPI / Bot 项目的 src/CustomPlayer，不再由 PigeonPlugins 维护。
+
+- StatusTextManager（TShock / TSL）已归入 PGameAPI / PigeonDimension 的 src/PigeonDimension/StatusTextManager，不再由 PigeonPlugins 维护。
