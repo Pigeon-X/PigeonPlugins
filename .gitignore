@@ -22,3 +22,8 @@ TestResults/
 *_backup*/
 *.deps.json
 *.runtimeconfig.json
+
+# 运行配置默认不入库；仅允许插件内置资源模板
+*.json
+!tshock/PlayerReward/PlayerReward.json
+!tshock/CustomPlayer/源码/CustomPlayer.CustomPlayer.json
