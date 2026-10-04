@@ -21,9 +21,9 @@
 
 ## 已收录
 
-TShock：AntiCheatingTool、CustomPlayer、FixTools、TileHelper、CGive、HelpPlus、PlayerReward、CommandTool、PlaceholderAPI、Chameleon、MapTp、StatusTextManager、TeleportRequest、VeinMiner、ProgressBag、ProgressControls、PlayerSpeed、RandomFishingLoot、RandRespawn、PersonalPermission、PerPlayerLoot、SwitchCommands、VotePlus。
+TShock：AntiCheatingTool、FixTools、TileHelper、CGive、HelpPlus、PlayerReward、CommandTool、PlaceholderAPI、Chameleon、MapTp、StatusTextManager、TeleportRequest、VeinMiner、ProgressBag、ProgressControls、PlayerSpeed、RandomFishingLoot、RandRespawn、PersonalPermission、PerPlayerLoot、SwitchCommands、VotePlus。
 
-TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool、FixTools、145修复小公举、MapTp、TeleportRequest、ProgressBag、ProgressControls、CGive、VeinMiner、StatusTextManager、TileHelper、HotReload、CustomPlayer。
+TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool、FixTools、145修复小公举、MapTp、TeleportRequest、ProgressBag、ProgressControls、CGive、VeinMiner、StatusTextManager、TileHelper、HotReload。
 
 ## 初始化提交
 
@@ -35,3 +35,7 @@ TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool�
 - 本地工作区：C:\Users\59934\Saved Games\流光核心源码\_git\PigeonPlugins
 - 本地同步工具：D:\59934\Desktop\AI维护文件\11-测试工具与报告\PigeonPlugins-Git同步
 - 远程服务器只用于测试和部署，不配置 Git 远端，不保存 Git 工作区。
+
+## 外部归属
+
+- CustomPlayer（TShock / TSL）已归入 PGameAPI / Bot 项目的 src/CustomPlayer，不再由 PigeonPlugins 维护。
