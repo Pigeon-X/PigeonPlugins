@@ -28,3 +28,10 @@ TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool�
 ## 初始化提交
 
 仓库采用源码快照方式建立。编译依赖和参考 DLL 不提交；构建时在项目属性或本机 DevelopmentDependencies 中指向 TShock/UnifierTSL 运行目录。
+
+## Git 上游
+
+- origin：administrator@114.28.145.124:GitRepos/PigeonPlugins.git
+- 本地工作区：C:\Users\59934\Saved Games\流光核心源码\_git\PigeonPlugins
+- 服务器工作区：C:\Users\Administrator\GitWork\PigeonPlugins
+- 本地同步工具：D:\59934\Desktop\AI维护文件\11-测试工具与报告\PigeonPlugins-Git同步
