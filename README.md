@@ -32,7 +32,6 @@ TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool�
 ## Git 上游
 
 - GitHub origin：git@ssh.github.com:Pigeon-X/PigeonPlugins.git
-- 服务器调试镜像：administrator@114.28.145.124:GitRepos/PigeonPlugins.git
 - 本地工作区：C:\Users\59934\Saved Games\流光核心源码\_git\PigeonPlugins
-- 服务器工作区：C:\Users\Administrator\GitWork\PigeonPlugins
 - 本地同步工具：D:\59934\Desktop\AI维护文件\11-测试工具与报告\PigeonPlugins-Git同步
+- 远程服务器只用于测试和部署，不配置 Git 远端，不保存 Git 工作区。
