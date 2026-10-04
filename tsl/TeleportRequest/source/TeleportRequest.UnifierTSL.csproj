@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>TeleportRequest</AssemblyName>
+    <RootNamespace>TeleportRequest</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);CS8602;CS8604</NoWarn>
+    <LangVersion>latest</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Config.cs" />
+    <Compile Include="TPRequest.cs" />
+    <Compile Include="TeleportRequestPlugin.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="TShockAPI"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\plugins\TShockAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnifierTSL"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\lib\UnifierTSL.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\lib\OTAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI.Runtime"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\lib\OTAPI.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\lib\Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

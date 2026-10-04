@@ -1,0 +1,232 @@
+{
+  "Hint1": "各个礼包的名字需唯一，不可重复",
+  "Hint2": "Item格式为 'ID*数量*前缀' ",
+  "Hint3": "ExecuteCommand 中可以添加 '{name}' 作为玩家名称的占位符， 如 '/bc player name is {name}' ",
+  "Hint4": "而 '{account}' 则是玩家账户名称的占位符，如 '/bc player account name is {account}' ",
+  "Hint5": "RPG 经验使用：.rpg 经验 add {name} <数量>",
+  "Hint6": "经济奖励使用：.eco 给予 {name} <数量>，可与经验同时配置",
+  "PlayerPacks": [
+    {
+      "Name": "新手",
+      "Groups": ["default","会员","流银","流金","流星","流尊","superadmin"],
+      "Items": [
+        "53*1*65",
+        "88*1*0",
+        "410*1*0",
+        "411*1*0",
+        "29*3*0",
+        "84*1*0",
+        "9*300*0",
+        "22*20*0",
+        "2274*30*0",
+        "73*5*0",
+        "357*10*0",
+        "4015*5*0"
+      ],
+      "ExecuteCommands": [".firework {name}"],
+      "IsHardMode": false
+    },
+    {
+      "Name": "新手(困难)",
+      "Groups": ["default","会员","流银","流金","流星","流尊","superadmin"],
+      "Items": [
+        "53*1*65",
+        "88*1*0",
+        "410*1*0",
+        "411*1*0",
+        "29*3*0",
+        "84*1*0",
+        "22*20*0",
+        "73*5*0",
+        "4015*5*0",
+        "1921*1*0",
+        "296*5*0"
+      ],
+      "ExecuteCommands": [".firework {name}"],
+      "IsHardMode": true
+    }
+  ],
+  "SponsorPacks": [
+    {
+      "Name": "会员",
+      "Groups": ["会员"],
+      "Items": [
+        "1821*1*0",
+        "1822*1*0",
+        "1823*1*0",
+        "73*15*0",
+        "3515*1*0",
+        "29*2*0",
+        "16*1*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 1200",
+        ".eco 给予 {name} 60"
+      ],
+      "IsHardMode": false
+    },
+    {
+      "Name": "会员(困难)",
+      "Groups": ["会员"],
+      "Items": [
+        "777*1*0",
+        "74*1*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 100000",
+        ".eco 给予 {name} 600"
+      ],
+      "IsHardMode": true
+    },
+    {
+      "Name": "流银",
+      "Groups": ["流银"],
+      "Items": [
+        "1760*1*0",
+        "1761*1*0",
+        "1760*1*0",
+        "73*25*0",
+        "3515*1*0",
+        "29*3*0",
+        "16*1*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 2500",
+        ".eco 给予 {name} 120"
+      ],
+      "IsHardMode": false
+    },
+    {
+      "Name": "流银(困难)",
+      "Groups": ["流银"],
+      "Items": [
+        "777*1*0",
+        "74*2*0",
+        "520*10*0",
+        "521*10*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 230000",
+        ".eco 给予 {name} 1200"
+      ],
+      "IsHardMode": true
+    },
+    {
+      "Name": "流金",
+      "Groups": ["流金"],
+      "Items": [
+        "251*1*0",
+        "252*1*0",
+        "253*1*0",
+        "73*50*0",
+        "3491*1*0",
+        "29*5*0",
+        "708*1*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 4000",
+        ".eco 给予 {name} 180"
+      ],
+      "IsHardMode": false
+    },
+    {
+      "Name": "流金(困难)",
+      "Groups": ["流金"],
+      "Items": [
+        "1195*1*0",
+        "74*3*0",
+        "520*20*0",
+        "521*20*0",
+        "575*20*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 380000",
+        ".eco 给予 {name} 1800"
+      ],
+      "IsHardMode": true
+    },
+    {
+      "Name": "流星",
+      "Groups": ["流星"],
+      "Items": [
+        "666*1*0",
+        "667*1*0",
+        "668*1*0",
+        "73*12*0",
+        "3485*1*0",
+        "29*8*0",
+        "3521*1*0",
+        "115*1*0",
+        "17*1*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 6000",
+        ".eco 给予 {name} 240"
+      ],
+      "IsHardMode": false
+    },
+    {
+      "Name": "流星(困难)",
+      "Groups": ["流星"],
+      "Items": [
+        "778*1*0",
+        "74*5*0",
+        "520*30*0",
+        "521*30*0",
+        "575*40*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 600000",
+        ".eco 给予 {name} 2400"
+      ],
+      "IsHardMode": true
+    },
+    {
+      "Name": "流尊",
+      "Groups": ["流尊"],
+      "Items": [
+        "3925*1*0",
+        "3926*1*0",
+        "3927*1*0",
+        "3929*1*0",
+        "74*2*0",
+        "3485*1*0",
+        "29*8*0",
+        "2351*15*0",
+        "3062*1*0",
+        "709*1*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 7000",
+        ".eco 给予 {name} 300"
+      ],
+      "IsHardMode": false
+    },
+    {
+      "Name": "流尊(困难)",
+      "Groups": ["流尊"],
+      "Items": [
+        "1202*1*0",
+        "74*10*0",
+        "520*40*0",
+        "521*40*0",
+        "575*40*0"
+      ],
+      "ExecuteCommands": [
+        ".firework {name}",
+        ".rpg 经验 add {name} 1050000",
+        ".eco 给予 {name} 3000"
+      ],
+      "IsHardMode": true
+    }
+  ]
+}

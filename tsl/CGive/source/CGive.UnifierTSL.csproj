@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>CGive</AssemblyName>
+    <RootNamespace>CGive</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8604;CS8618;CS8625</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="CGive.cs" />
+    <Compile Include="Data.cs" />
+    <Compile Include="Given.cs" />
+    <Compile Include="Warehouse.cs" />
+    <Compile Include="CGivePlugin.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="TShockAPI"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\plugins\TShockAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnifierTSL"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\lib\UnifierTSL.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\lib\OTAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI.Runtime"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\lib\OTAPI.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\lib\Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Microsoft.Data.Sqlite"><HintPath>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64\lib\Microsoft.Data.Sqlite.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

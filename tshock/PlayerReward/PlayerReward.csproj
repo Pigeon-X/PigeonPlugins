@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>PlayerReward</AssemblyName>
+    <RootNamespace>PlayerReward</RootNamespace>
+    <TShockRoot Condition="'$(TShockRoot)' == ''">D:\59934\Desktop\TShock6.2.1一键部署包\payload</TShockRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="PlayerReward.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="TShockAPI"><HintPath>$(TShockRoot)\ServerPlugins\TShockAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI"><HintPath>$(TShockRoot)\bin\OTAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI.Runtime"><HintPath>$(TShockRoot)\bin\OTAPI.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="TerrariaServer"><HintPath>$(TShockRoot)\bin\TerrariaServer.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ModFramework"><HintPath>$(TShockRoot)\bin\ModFramework.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="HttpServer"><HintPath>$(TShockRoot)\bin\HttpServer.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
