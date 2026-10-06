@@ -88,6 +88,7 @@ public class AntiCheatingToolPlugin : TerrariaPlugin
 	{
 		_config = Config.Load();
 		RebuildSets();
+		BoundaryBuilder.Invalidate();
 		EnsureBoundary();
 	}
 
@@ -99,7 +100,7 @@ public class AntiCheatingToolPlugin : TerrariaPlugin
 
 	private void EnsureBoundary()
 	{
-		if (Main.spawnTileX > 0 && Main.spawnTileY > 0 && BoundaryBuilder.Count == 0)
+		if (!BoundaryBuilder.IsBuilt && Main.spawnTileX > 0 && Main.spawnTileY > 0)
 		{
 			BoundaryBuilder.Build(_config);
 		}
@@ -129,6 +130,7 @@ public class AntiCheatingToolPlugin : TerrariaPlugin
 	}
 	private void OnGamePostInitialize(EventArgs args)
 	{
+		BoundaryBuilder.Invalidate();
 		EnsureBoundary();
 	}
 
@@ -168,7 +170,6 @@ public class AntiCheatingToolPlugin : TerrariaPlugin
 		//IL_006f: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0076: Invalid comparison between Unknown and I4
 		Config config = _config;
-		EnsureBoundary();
 		if (args.Msg == null)
 		{
 			return;
@@ -512,6 +513,7 @@ Projectile projectile = args.Projectile;
 				config.Protection.UndergroundDepth = result;
 			}
 config.Save();
+			BoundaryBuilder.Invalidate();
 			BoundaryBuilder.Build(config);
 			p.SendSuccessMessage("已更新: " + ProtectionZone.Describe(config));
 			break;

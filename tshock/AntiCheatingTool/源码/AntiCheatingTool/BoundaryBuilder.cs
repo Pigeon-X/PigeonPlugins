@@ -20,6 +20,12 @@ internal static class BoundaryBuilder
 
     public static int Count => BorderTiles.Count;
 
+    /// <summary>本世界是否已经建过边框（防止每次调用都重建）。</summary>
+    public static bool IsBuilt { get; private set; }
+
+    /// <summary>世界切换 / 配置热改后调用，让下一次 EnsureBoundary 重新建边框。</summary>
+    public static void Invalidate() => IsBuilt = false;
+
     public static bool Contains(int x, int y) => BorderTiles.Contains(Key(x, y));
 
     public static bool IsNearBoundary(int x, int y, int margin)
@@ -42,15 +48,35 @@ internal static class BoundaryBuilder
     {
         if (cfg?.Protection == null || Main.tile == null || Main.maxTilesX <= 0 || Main.maxTilesY <= 0)
         {
-            return;
+            return;                     // 世界还没就绪：保持 IsBuilt=false，等下一次再建
+        }
+
+        if (IsBuilt)
+        {
+            return;                     // ★ 已经建过就不重建（以前每个网络包都重建 → 刷屏 + 卡顿）
         }
 
         ClearKnown();
         var spawnX = ProtectionZone.SpawnTileX;
         var spawnY = ProtectionZone.SpawnTileY;
         var radius = Math.Max(1, cfg.Protection.SpawnXRadius);
-        var leftX = spawnX - radius;
-        var rightX = spawnX + radius;
+        var wantLeft = spawnX - radius;
+        var wantRight = spawnX + radius;
+
+        // ★ 两侧墙必须夹在世界范围内。
+        //   半径配成整图（例如 8399）时，spawnX±radius 会落到世界外 → 一格都建不出来 →
+        //   永远满足“还没建过”的判断 → 每次触发都重建并打一行日志（就是刷屏的真正原因）。
+        var leftX = Math.Clamp(wantLeft, 2, Main.maxTilesX - 3);
+        var rightX = Math.Clamp(wantRight, 2, Main.maxTilesX - 3);
+        var coversWorld = leftX != wantLeft || rightX != wantRight || rightX - leftX < WallThickness * 2;
+
+        if (coversWorld)
+        {
+            IsBuilt = true;
+            TShock.Log.ConsoleInfo($"[AntiCheatingTool] 保护区半径 {radius} 已覆盖整张地图（世界宽 {Main.maxTilesX}），按整图保护处理，不生成红色边框。");
+            return;
+        }
+
         var leftSurface = FindSurfaceY(leftX, spawnY);
         var rightSurface = FindSurfaceY(rightX, spawnY);
         var oldRoofY = Math.Min(leftSurface, rightSurface) - WallHeight;
@@ -64,6 +90,7 @@ internal static class BoundaryBuilder
         BuildSideWall(leftX, leftSurface);
         BuildSideWall(rightX, rightSurface);
 
+        IsBuilt = true;
         TShock.Log.ConsoleInfo($"[AntiCheatingTool] 保护区边框已刷新：警戒物块 {BorderTiles.Count} 格，地上半径 {radius}，地面通道 {GroundGateHeight} 格，空中通道 {AirGateHeight} 格。");
     }
 
