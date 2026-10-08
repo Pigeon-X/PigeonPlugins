@@ -35,3 +35,6 @@ TestResults/
 !tshock/**/i18n/*.pot
 !tsl/**/i18n/*.po
 !tsl/**/i18n/*.pot
+# 配置模板：plugins 目录下的 config/ 放的是可复用的默认配置，不含凭据与运行数据
+!tshock/**/config/*.json
+!tsl/**/config/*.json

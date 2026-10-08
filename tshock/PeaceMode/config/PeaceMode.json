@@ -1,0 +1,8 @@
+{
+  "Enabled": false,
+  "ClearExistingNpcsOnEnable": true,
+  "IncludeTownNpcs": false,
+  "BanEvents": true,
+  "BanRain": true,
+  "BanMeteor": true
+}

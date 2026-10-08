@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<!--
+	  PeaceMode（作者 lmx12330）：和平模式，禁止世界中全部 NPC 与事件生成。
+	  本机线上在跑，但此前全盘没有任何源码、也没有上游登记，只有编译产物。
+	  源码由线上 PeaceMode.dll 反编译得到，用于避免该插件只能以二进制形式存在。
+	-->
+	<Import Project="..\..\template.targets" />
+
+	<PropertyGroup>
+		<AssemblyName>PeaceMode</AssemblyName>
+		<RootNamespace>PeaceMode</RootNamespace>
+	</PropertyGroup>
+
+</Project>

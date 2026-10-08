@@ -42,7 +42,7 @@ out\Release\
 
 ## 已收录
 
-TShock：AntiCheatingTool、FixTools、TileHelper、CGive、HelpPlus、PlayerReward、CommandTool、PlaceholderAPI、Chameleon、MapTp、TeleportRequest、VeinMiner、ProgressBag、ProgressControls、PlayerSpeed、RandomFishingLoot、RandRespawn、PersonalPermission、PerPlayerLoot、SwitchCommands、VotePlus、LazyAPI、PermaBuff、Permabuffs。
+TShock：AntiCheatingTool、FixTools、TileHelper、CGive、HelpPlus、PlayerReward、CommandTool、PlaceholderAPI、Chameleon、MapTp、TeleportRequest、VeinMiner、ProgressBag、ProgressControls、PlayerSpeed、RandomFishingLoot、RandRespawn、PersonalPermission、PerPlayerLoot、SwitchCommands、VotePlus、LazyAPI、PermaBuff、Permabuffs、PeaceMode。
 
 TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool、FixTools、145修复小公举、MapTp、TeleportRequest、ProgressBag、ProgressControls、CGive、VeinMiner、TileHelper、HotReload。
 
@@ -54,6 +54,24 @@ TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool�
   该支源码由线上 `Permabuffs.dll` 反编译得到并修正到可编译、行为等价，
   目的是让线上这支插件不再只以二进制形式存在。
   **不要把二者互相替换。**
+
+### PeaceMode
+
+`tshock/PeaceMode/`：和平模式（作者 lmx12330），禁止世界中全部 NPC 与事件生成。
+本机线上在跑，但此前**全盘没有任何源码、上游也未登记**，只有编译产物；
+现由线上 `PeaceMode.dll` 反编译得到并修正到可编译，避免该插件只能以二进制形式存在。
+
+## 由反编译补齐的源码
+
+以下两支此前只有二进制，现已在仓库内有可编译源码，重建产物类清单与线上一致：
+
+| 目录 | 线上程序集 | 说明 |
+|---|---|---|
+| `tshock/Permabuffs/` | `Permabuffs.dll` | 命名空间 `Permabuffs_V2`，含区域 Buff 能力 |
+| `tshock/PeaceMode/` | `PeaceMode.dll` | 和平模式 |
+
+两者重建后都会多出一个 `Localizer.I18n` 类：现源码经 `tshock/Shared/I18n.cs` 走共享本地化，
+线上那版是更早构建、尚未接入。功能上不冲突。
 
 ## 初始化提交
 
