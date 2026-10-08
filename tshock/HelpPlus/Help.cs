@@ -193,8 +193,7 @@ public class HelpPlus : TerrariaPlugin
             .Select(cmd =>
             {
                 var shortText = GetShort(cmd.Name);
-                return $"[c/60D6D0:{specifier}][c/F1D06C:{cmd.Name}]" +
-                       (shortText.Length > 0 ? $"（{shortText}）" : "");
+                return $"[c/4CB5DE:{specifier}][c/F1D06C:{cmd.Name}]" + shortText;
             })
             .ToList();
 
@@ -430,9 +429,10 @@ public class HelpPlus : TerrariaPlugin
             return "";
         }
 
-        // 显示为“/help（帮助）”，不再在括号前加 @ 或额外颜色标记。
+        // 显示为“/help（帮助）”，括号和注释使用 FixTools 的深蓝；
         // 这里只影响帮助列表的文字渲染，不碰 /help 命令注册、别名和替换逻辑。
-        return (value ?? "").Trim();
+        var text = (value ?? "").Trim();
+        return text.Length > 0 ? $"[c/508DC8:（{text}）]" : "";
     }
 
     protected override void Dispose(bool disposing)
