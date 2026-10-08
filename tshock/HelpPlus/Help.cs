@@ -1,6 +1,7 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using On.OTAPI;
 using System.Text;
+using System.Threading.Tasks;
 using Terraria;
 using Terraria.Chat;
 using Terraria.Chat.Commands;
@@ -36,6 +37,139 @@ public class HelpPlus : TerrariaPlugin
         Commands.ChatCommands.RemoveAll(x => x.Name == "help");
         Commands.ChatCommands.Add(this._command);
         Config.Read();
+
+        // 延迟自检：Initialize 阶段其他插件还没注册完命令，
+        // 只有等全部插件就绪后再看，才能反映玩家真正会遇到的命令表。
+        _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => SelfCheck());
+    }
+
+    /// <summary>
+    /// 自检：确认 <c>/help</c> 确实还注册着，并把第一页列表真实渲染一遍写进日志。
+    ///
+    /// 存在的原因：玩家只输入 <c>/help</c>（不带参数）时曾经什么都看不到，
+    /// 而控制台与游戏内都拿不到可诊断的信息。自检把"命令是否注册""列表渲染是否非空"
+    /// 两件事落到日志，出问题时能直接看出卡在哪一步。
+    /// </summary>
+    private static void SelfCheck()
+    {
+        try
+        {
+            var registered = Commands.ChatCommands.FindAll(c => c.HasAlias("help"));
+            TShock.Log.ConsoleInfo($"[HelpPlus] 自检: 命令表中的 help 条目 = {registered.Count}");
+            if (registered.Count == 0)
+            {
+                TShock.Log.ConsoleError("[HelpPlus] 自检: /help 已不在命令表中——有插件在 HelpPlus 之后删除了它，玩家输入 /help 会提示无效命令。");
+                return;
+            }
+
+            var rendered = RenderCommandList(TSPlayer.Server, 1, out var pages, out var total);
+            var lineCount = rendered.Count(c => c == '\n') + 1;
+            TShock.Log.ConsoleInfo($"[HelpPlus] 自检: 可用命令 {total} 个，共 {pages} 页，第 1 页 {lineCount} 行、{rendered.Length} 字符。");
+
+            // 把渲染结果按行写进日志，便于肉眼确认内容确实成型
+            foreach (var line in rendered.Split('\n'))
+            {
+                if (line.Trim().Length > 0)
+                {
+                    TShock.Log.ConsoleInfo("  [HelpPlus 第1页] " + line.TrimEnd('\r'));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            TShock.Log.ConsoleError($"[HelpPlus] 自检异常: {ex}");
+        }
+    }
+
+    /// <summary>
+    /// 渲染某一页命令列表。抽成独立方法是为了让自检能在没有客户端连接的情况下
+    /// 复用与 <see cref="Help"/> 完全相同的渲染路径，避免"自检通过的代码"和"玩家走的代码"不是同一段。
+    /// </summary>
+    private static string RenderCommandList(TSPlayer player, int page, out int pages, out int total)
+    {
+        var specifier = TShock.Config.Settings.CommandSpecifier;
+
+        var pageSize = Config.Settings.PageSize;
+        if (pageSize < 1)
+        {
+            pageSize = 30;
+        }
+
+        var cmdNamesOrder = Commands.ChatCommands
+            .Where(cmd => cmd.CanRun(player) && (cmd.Name != "setup" || TShock.SetupToken != 0))
+            .ToList();
+
+        if (Config.Settings.OrderByLetter)
+        {
+            cmdNamesOrder = cmdNamesOrder.OrderBy(cmd => cmd.Name).ToList();
+        }
+
+        total = cmdNamesOrder.Count;
+        pages = (int)Math.Ceiling(total / (double)pageSize);
+        if (pages < 1)
+        {
+            pages = 1;
+        }
+
+        // 页码兜底：原实现只处理 page > pages，page <= 0 会产生负数下标，
+        // 结果是一条空消息（玩家什么都看不到），这里统一拉回第一页。
+        if (page < 1)
+        {
+            page = 1;
+        }
+        if (page > pages)
+        {
+            page = pages;
+        }
+
+        var start = (page - 1) * pageSize;
+        var pagedCommands = cmdNamesOrder
+            .Skip(start)
+            .Take(pageSize)
+            .Select(cmd => $"[c/60D6D0:{specifier}][c/F1D06C:{cmd.Name}]{GetShort(cmd.Name)}")
+            .ToList();
+
+        var stringBuilder = new StringBuilder();
+        var currentLine = new StringBuilder();
+
+        // 用 '\n' 而不是 AppendLine()：AppendLine 在 Windows 上写入 "\r\n"，
+        // 而 TSPlayer.SendMessage 只按 '\n' 切分，每行会残留一个 '\r'，
+        // 发出去后玩家端可能整条消息都不渲染。
+        stringBuilder.Append(GetString($"[c/FE727D:命令列表] ([c/68A7E8:{page}]/[c/EC6AC9:{pages}]):")).Append('\n');
+
+        var wrapWidth = Config.Settings.WithSize;
+        if (wrapWidth < 20)
+        {
+            wrapWidth = 120;
+        }
+
+        foreach (var cmdWithSpace in pagedCommands.Select(cmd => $"{cmd} "))
+        {
+            if (currentLine.Length + cmdWithSpace.Length > wrapWidth)
+            {
+                stringBuilder.Append(currentLine.ToString().Trim()).Append('\n');
+                currentLine.Clear();
+            }
+            currentLine.Append(cmdWithSpace);
+        }
+
+        if (currentLine.Length > 0)
+        {
+            stringBuilder.Append(currentLine.ToString().Trim()).Append('\n');
+        }
+
+        if (page < pages)
+        {
+            stringBuilder.Append(GetString($"请输入[c/68A7E8:{specifier}help {page + 1}]查看更多")).Append('\n');
+        }
+
+        // 兜底：真的没有任何可展示内容时也要给一句话，不能静默返回。
+        if (pagedCommands.Count == 0)
+        {
+            stringBuilder.Append(GetString("[c/FE727D:没有可显示的命令。]")).Append('\n');
+        }
+
+        return stringBuilder.ToString();
     }
 
     private static void GeneralHooks_ReloadEvent(ReloadEventArgs e)
@@ -60,57 +194,17 @@ public class HelpPlus : TerrariaPlugin
                 return;
             }
 
-            var pageSize = Config.Settings.PageSize;
-            
-            var cmdNames = Commands.ChatCommands
-                .Where(cmd => cmd.CanRun(args.Player) && (cmd.Name != "setup" || TShock.SetupToken != 0));
-
-            var cmdNamesOrder = Config.Settings.OrderByLetter 
-                ? cmdNames.OrderBy(cmd => cmd.Name).ToList() 
-                : cmdNames.ToList();
-
-            var count = cmdNamesOrder.Count;
-            var pages = (int)Math.Ceiling(count / (double)pageSize);
-
-            if (page > pages)
+            // 控制台/服务器身份调用时 Index 为 -1，原实现会把结果广播给全服；
+            // 这里显式挡掉，避免服务器自检或 REST 触发时刷屏。
+            if (args.Player == null || args.Player.Index < 0)
             {
-                page = pages;
+                TShock.Log.ConsoleInfo(GetString("[HelpPlus] 控制台不展示命令列表，请在游戏内输入 {0}help。", specifier));
+                return;
             }
 
-            var start = (page - 1) * pageSize;
-            var pagedCommands = cmdNamesOrder
-                .Skip(start)
-                .Take(pageSize)
-                .Select(cmd => $"[c/60D6D0:{specifier}][c/F1D06C:{cmd.Name}]{GetShort(cmd.Name)}")
-                .ToList();
-
-            var stringBuilder = new StringBuilder();
-            var currentLine = new StringBuilder();
-
-            stringBuilder.AppendLine(GetString($"[c/FE727D:命令列表] ([c/68A7E8:{page}]/[c/EC6AC9:{pages}]):"));
-            
-            foreach (var cmdWithSpace in pagedCommands.Select(cmd => $"{cmd} "))
-            {
-                if (currentLine.Length + cmdWithSpace.Length > Config.Settings.WithSize)
-                {
-                    stringBuilder.AppendLine(currentLine.ToString().Trim());
-                    currentLine.Clear();
-                }
-                currentLine.Append(cmdWithSpace);
-            }
-
-            if (currentLine.Length > 0)
-            {
-                stringBuilder.AppendLine(currentLine.ToString().Trim());
-            }
-            
-            if (page < pages)
-            {
-                stringBuilder.AppendLine(GetString($"请输入[c/68A7E8:/help {page + 1}]查看更多"));
-            }
-
-            args.Player.SendMessage(stringBuilder.ToString(), 
-                255, 244, 150);
+            // 渲染与自检走同一段代码，保证"自检通过"就等于"玩家能看到"
+            var text = RenderCommandList(args.Player, page, out _, out _);
+            args.Player.SendMessage(text, 255, 244, 150);
         }
         else
         {
