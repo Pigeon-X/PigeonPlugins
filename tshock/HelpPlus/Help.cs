@@ -44,36 +44,32 @@ public class HelpPlus : TerrariaPlugin
     }
 
     /// <summary>
-    /// 自检：确认 <c>/help</c> 确实还注册着，并把第一页列表真实渲染一遍写进日志。
+    /// 自检：确认 <c>/help</c> 确实还注册着，并把第一页列表真实渲染一遍。
     ///
     /// 存在的原因：玩家只输入 <c>/help</c>（不带参数）时曾经什么都看不到，
     /// 而控制台与游戏内都拿不到可诊断的信息。自检把"命令是否注册""列表渲染是否非空"
     /// 两件事落到日志，出问题时能直接看出卡在哪一步。
+    ///
+    /// 输出走 Debug 级：平时不写日志、不刷屏；需要排查时把 tshock\config.json 的
+    /// 「是否输出调试日志」改成 true，或直接看控制台，就能看到这几行。
     /// </summary>
     private static void SelfCheck()
     {
         try
         {
             var registered = Commands.ChatCommands.FindAll(c => c.HasAlias("help"));
-            TShock.Log.ConsoleInfo($"[HelpPlus] 自检: 命令表中的 help 条目 = {registered.Count}");
+            TShock.Log.ConsoleDebug($"[HelpPlus] 自检: 命令表中的 help 条目 = {registered.Count}");
+
             if (registered.Count == 0)
             {
+                // 这一条保持 Error 级：命令真的丢了属于故障，必须让人看见
                 TShock.Log.ConsoleError("[HelpPlus] 自检: /help 已不在命令表中——有插件在 HelpPlus 之后删除了它，玩家输入 /help 会提示无效命令。");
                 return;
             }
 
             var rendered = RenderCommandList(TSPlayer.Server, 1, out var pages, out var total);
             var lineCount = rendered.Count(c => c == '\n') + 1;
-            TShock.Log.ConsoleInfo($"[HelpPlus] 自检: 可用命令 {total} 个，共 {pages} 页，第 1 页 {lineCount} 行、{rendered.Length} 字符。");
-
-            // 把渲染结果按行写进日志，便于肉眼确认内容确实成型
-            foreach (var line in rendered.Split('\n'))
-            {
-                if (line.Trim().Length > 0)
-                {
-                    TShock.Log.ConsoleInfo("  [HelpPlus 第1页] " + line.TrimEnd('\r'));
-                }
-            }
+            TShock.Log.ConsoleDebug($"[HelpPlus] 自检: 可用命令 {total} 个，共 {pages} 页，第 1 页 {lineCount} 行、{rendered.Length} 字符。");
         }
         catch (Exception ex)
         {
@@ -198,7 +194,7 @@ public class HelpPlus : TerrariaPlugin
             // 这里显式挡掉，避免服务器自检或 REST 触发时刷屏。
             if (args.Player == null || args.Player.Index < 0)
             {
-                TShock.Log.ConsoleInfo(GetString("[HelpPlus] 控制台不展示命令列表，请在游戏内输入 {0}help。", specifier));
+                TShock.Log.ConsoleDebug(GetString("[HelpPlus] 控制台不展示命令列表，请在游戏内输入 {0}help。", specifier));
                 return;
             }
 
