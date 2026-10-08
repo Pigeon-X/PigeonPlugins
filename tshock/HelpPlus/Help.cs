@@ -70,6 +70,18 @@ public class HelpPlus : TerrariaPlugin
             var rendered = RenderCommandList(TSPlayer.Server, 1, out var pages, out var total);
             var lineCount = rendered.Count(c => c == '\n') + 1;
             TShock.Log.ConsoleDebug($"[HelpPlus] 自检: 可用命令 {total} 个，共 {pages} 页，第 1 页 {lineCount} 行、{rendered.Length} 字符。");
+
+            // 格式抽查（同样只在 Debug 级输出）：确认两条链路各自的渲染都对
+            // 控制台：纯文本 /指令（注释）；游戏内：仍带 [c/...] 富文本与 @ 附注标记
+            var rawLines = rendered.Split('\n').Where(l => l.Trim().Length > 0).Take(3).Select(l => l.Trim());
+            foreach (var line in rawLines)
+            {
+                TShock.Log.ConsoleDebug("  [HelpPlus 控制台格式] " + StripColorTags(line));
+            }
+            foreach (var line in rendered.Split('\n').Where(l => l.Trim().Length > 0).Skip(1).Take(1))
+            {
+                TShock.Log.ConsoleDebug("  [HelpPlus 游戏内格式] " + line.Trim());
+            }
         }
         catch (Exception ex)
         {
@@ -81,11 +93,14 @@ public class HelpPlus : TerrariaPlugin
     /// 渲染某一页命令列表。抽成独立方法是为了让自检能在没有客户端连接的情况下
     /// 复用与 <see cref="Help"/> 完全相同的渲染路径，避免"自检通过的代码"和"玩家走的代码"不是同一段。
     /// </summary>
-    private static string RenderCommandList(TSPlayer player, int page, out int pages, out int total)
+    private static string RenderCommandList(TSPlayer? player, int page, out int pages, out int total)
     {
         var specifier = TShock.Config.Settings.CommandSpecifier;
 
-        var pageSize = Config.Settings.PageSize;
+        // 控制台一次性展示全部命令：控制台没有"翻页再看下一页"的体验，
+        // 分页反而要反复敲 /help 2、/help 3，不如一次列完。
+        var isConsole = player == null || player.Index < 0;
+        var pageSize = isConsole ? int.MaxValue : Config.Settings.PageSize;
         if (pageSize < 1)
         {
             pageSize = 30;
@@ -122,7 +137,14 @@ public class HelpPlus : TerrariaPlugin
         var pagedCommands = cmdNamesOrder
             .Skip(start)
             .Take(pageSize)
-            .Select(cmd => $"[c/60D6D0:{specifier}][c/F1D06C:{cmd.Name}]{GetShort(cmd.Name)}")
+            // 格式 /warp（传送点）：命令名后紧跟全角括号注释，没有注释就不加括号。
+            // 控制台走纯文本注释（不带 @ 标记）。
+            .Select(cmd =>
+            {
+                var shortText = GetShort(cmd.Name, isConsole);
+                return $"[c/60D6D0:{specifier}][c/F1D06C:{cmd.Name}]" +
+                       (shortText.Length > 0 ? $"（{shortText}）" : "");
+            })
             .ToList();
 
         var stringBuilder = new StringBuilder();
@@ -190,17 +212,24 @@ public class HelpPlus : TerrariaPlugin
                 return;
             }
 
-            // 控制台/服务器身份调用时 Index 为 -1，原实现会把结果广播给全服；
-            // 这里显式挡掉，避免服务器自检或 REST 触发时刷屏。
-            if (args.Player == null || args.Player.Index < 0)
-            {
-                TShock.Log.ConsoleDebug(GetString("[HelpPlus] 控制台不展示命令列表，请在游戏内输入 {0}help。", specifier));
-                return;
-            }
+            // 控制台（Index < 0）不进游戏内消息链路：
+            // 原实现会走 SendMessage 广播给全服，等于刷屏。改成直接写服务器控制台。
+            var isConsole = args.Player == null || args.Player.Index < 0;
 
             // 渲染与自检走同一段代码，保证"自检通过"就等于"玩家能看到"
             var text = RenderCommandList(args.Player, page, out _, out _);
-            args.Player.SendMessage(text, 255, 244, 150);
+
+            if (isConsole)
+            {
+                // 控制台不吃 Terraria 的 [c/XXXXXX:...] 颜色标记，去掉后再打，
+                // 否则终端里满屏都是颜色代码。
+                Console.WriteLine(StripColorTags(text));
+            }
+            else
+            {
+                // 走到这里说明 isConsole 为 false，args.Player 必然非空
+                args.Player!.SendMessage(text, 255, 244, 150);
+            }
         }
         else
         {
@@ -260,11 +289,38 @@ public class HelpPlus : TerrariaPlugin
         }
     }
 
-    private static string GetShort(string str)
+    /// <summary>
+    /// 去掉 Terraria 聊天颜色标记 <c>[c/RRGGBB:文本]</c> 与 <c>[i:物品]</c> 之类标签，
+    /// 只留下纯文本。控制台直接输出时用，避免终端里满屏颜色代码。
+    /// </summary>
+    private static string StripColorTags(string text)
     {
-        return Config.Settings.DisPlayShort && Config.Settings.ShortCommands.TryGetValue(str, out var value)
-            ? $"[c/FF5260:@]{value.Color(Utils.BoldHighlight)}"
-            : "";
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        // [c/XXXXXX:内容] -> 内容
+        var stripped = System.Text.RegularExpressions.Regex.Replace(
+            text, @"\[c/[0-9A-Fa-f]{6}:([^\]]*)\]", "$1");
+
+        // 其余形如 [xxx:yyy] 或 [i:nnnn] 的标签整体去掉
+        stripped = System.Text.RegularExpressions.Regex.Replace(stripped, @"\[[a-zA-Z]+:[^\]]*\]", "");
+
+        return stripped;
+    }
+
+    private static string GetShort(string str, bool plain = false)
+    {
+        if (!Config.Settings.DisPlayShort || !Config.Settings.ShortCommands.TryGetValue(str, out var value))
+        {
+            return "";
+        }
+
+        // 游戏内用 Terraria 富文本：@ 是"附注"的视觉标记；控制台是纯文本，不要这个标记
+        return plain
+            ? value
+            : $"[c/FF5260:@]{value.Color(Utils.BoldHighlight)}";
     }
 
     protected override void Dispose(bool disposing)
