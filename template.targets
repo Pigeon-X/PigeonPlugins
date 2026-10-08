@@ -1,0 +1,92 @@
+<Project>
+    <!--
+      PigeonPlugins 仓库级构建模板。
+
+      tshock/ 下多数插件的 .csproj 都是 <Import Project="..\..\template.targets" />，
+      因此本文件必须存在于仓库根，否则这些工程全部无法还原与编译。
+      内容与上游 UnrealMultiple/TShockPlugin 的 template.targets 保持一致，
+      只把 <Compile Include="..\Shared\**\*.cs" /> 改成"目录存在才引入"，
+      避免本仓库没有 Shared 时 MSBuild 因空 glob 报错。
+    -->
+    <PropertyGroup>
+        <!-- 只在工程自身没声明时兜底，避免覆盖 SourceGen 等 netstandard2.0 工程 -->
+        <TargetFramework Condition="'$(TargetFramework)' == ''">net9.0</TargetFramework>
+        <ImplicitUsings Condition="'$(ImplicitUsings)' == ''">enable</ImplicitUsings>
+        <Nullable Condition="'$(Nullable)' == ''">enable</Nullable>
+        <LangVersion Condition="'$(LangVersion)' == ''">latest</LangVersion>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <OutputPath>..\..\out\$(Configuration)</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
+        <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-6qmf-mmc7-6c2p"/>
+        <PackageReference Include="TShock" Version="6.1.0">
+            <IncludeAssets>compile</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <!--
+      Shared 是上游 UnrealMultiple 约定的公共源码目录（本仓库放在 tshock\Shared\）。
+      统一由仓库根引入一次，避免各插件工程重复 Include 造成 CS2002。
+    -->
+    <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)tshock\Shared')">
+        <Compile Include="$(MSBuildThisFileDirectory)tshock\Shared\**\*.cs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include=".\i18n\*.mo" Condition="Exists('.\i18n')">
+            <LogicalName>i18n.%(FileName).mo</LogicalName>
+        </EmbeddedResource>
+    </ItemGroup>
+
+    <Target Name="EmbedNuGetDlls" AfterTargets="ResolveReferences">
+        <ItemGroup>
+            <EmbedNuGetDllsList Include="$(EmbedNuGetDlls.Split(';'))" />
+
+            <DllsToEmbed Include="@(ReferencePath)"
+                        Condition="$([System.String]::new(';$(EmbedNuGetDlls);').Contains(';%(FileName)%(Extension);'))" />
+
+            <EmbeddedResource Include="@(DllsToEmbed)">
+                <LogicalName>embedded.%(FileName)%(Extension)</LogicalName>
+            </EmbeddedResource>
+
+            <EmbeddedDllLog Include="Embedded DLL: %(DllsToEmbed.Filename)%(DllsToEmbed.Extension) as embedded.%(DllsToEmbed.Filename)%(DllsToEmbed.Extension)" />
+
+            <ReferenceCopyLocalPaths Remove="@(DllsToEmbed)" />
+        </ItemGroup>
+
+        <Message Text="Embedding @(DllsToEmbed->Count()) DLLs" Importance="high"
+                Condition="'@(DllsToEmbed->Count())' != '0'" />
+
+        <Message Text="@(EmbeddedDllLog)" Importance="high"
+                Condition="'@(DllsToEmbed->Count())' != '0'" />
+    </Target>
+
+    <Target Name="CopySpecificNuGetDlls" AfterTargets="Build" Condition="'$(CopyAssemblyToOutDir)' != ''">
+        <ItemGroup>
+            <AllAssemblies Include="@(ReferencePath)" />
+            <SpecificNuGetDlls Include="@(AllAssemblies)"
+                                 Condition="$([System.String]::new(';$(CopyAssemblyToOutDir);').Contains(';%(Filename)%(Extension);'))" />
+        </ItemGroup>
+        <Message Text="Specific NuGet DLLs to copy: @(SpecificNuGetDlls)" Importance="high" />
+        <Copy SourceFiles="@(SpecificNuGetDlls)" DestinationFolder="$(OutputPath)" />
+    </Target>
+
+    <Target Name="githash" BeforeTargets="PreBuildEvent">
+        <Exec Command="git log -1 --pretty=&quot;format:%25H&quot;" StandardOutputImportance="low" StandardErrorImportance="low" ContinueOnError="true" ConsoleToMSBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="CommitHashValue"/>
+        </Exec>
+
+        <ItemGroup>
+            <AssemblyAttribute Include="System.Reflection.AssemblyInformationalVersionAttribute">
+                <_Parameter1>$(CommitHashValue)</_Parameter1>
+            </AssemblyAttribute>
+        </ItemGroup>
+    </Target>
+</Project>

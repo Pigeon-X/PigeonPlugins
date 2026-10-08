@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<!--
+	  Permabuffs（线上命名空间 Permabuffs_V2，作者 Zaicon & Cai）。
+	  这是本机实际在跑的版本，与上游 UnrealMultiple 的 PermaBuff 是两支不同的插件：
+	  上游 PermaBuff 是「永久 Buff」原始实现，本支增加了 BuffGroup / RegionBuff（区域 Buff）等能力。
+	  源码由线上 Permabuffs.dll 反编译得到，用于避免该插件只能以二进制形式存在。
+	-->
+	<Import Project="..\..\template.targets" />
+
+	<PropertyGroup>
+		<AssemblyName>Permabuffs</AssemblyName>
+		<RootNamespace>Permabuffs_V2</RootNamespace>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+</Project>

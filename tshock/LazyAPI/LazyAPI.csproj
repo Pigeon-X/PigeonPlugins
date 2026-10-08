@@ -7,9 +7,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <!-- SourceGen 是 Roslyn 源生成器，按仓库统一放在 tshock\ 下供 tshock 与 tsl 共用 -->
-      <ProjectReference Include="..\..\..\tshock\SourceGen\SourceGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    </ItemGroup>
+      <ProjectReference Include="..\SourceGen\SourceGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />    </ItemGroup>
 
     <ItemGroup>
         <CompilerVisibleProperty Include="ProgressHelper" />

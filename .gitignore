@@ -27,3 +27,11 @@ TestResults/
 *.json
 !tshock/PlayerReward/PlayerReward.json
 !tshock/CustomPlayer/源码/CustomPlayer.CustomPlayer.json
+# 插件清单：上游 UnrealMultiple 规范的一部分，属于源码而非运行配置
+!tshock/**/manifest.json
+!tsl/**/manifest.json
+# i18n 源文件：.po/.pot 是翻译源，.mo 才是编译产物
+!tshock/**/i18n/*.po
+!tshock/**/i18n/*.pot
+!tsl/**/i18n/*.po
+!tsl/**/i18n/*.pot
