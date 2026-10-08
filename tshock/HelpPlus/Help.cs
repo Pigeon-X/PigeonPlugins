@@ -67,20 +67,35 @@ public class HelpPlus : TerrariaPlugin
                 return;
             }
 
-            var rendered = RenderCommandList(TSPlayer.Server, 1, out var pages, out var total);
-            var lineCount = rendered.Count(c => c == '\n') + 1;
-            TShock.Log.ConsoleDebug($"[HelpPlus] 自检: 可用命令 {total} 个，共 {pages} 页，第 1 页 {lineCount} 行、{rendered.Length} 字符。");
+            // 用捕获型玩家走"玩家侧真实发送路径"：
+            // 渲染之后按 Help() 一样逐行发送，把每一条实际会发出去的消息记下来。
+            var spy = new CapturingPlayer();
+            var lines = RenderCommandListLines(spy, 1, out var pages, out var total);
 
-            // 格式抽查（同样只在 Debug 级输出）：确认两条链路各自的渲染都对
-            // 控制台：ANSI 颜色；游戏内：Terraria [c/...] 富文本
-            var rawLines = rendered.Split('\n').Where(l => l.Trim().Length > 0).Take(3).Select(l => l.Trim());
-            foreach (var line in rawLines)
+            TShock.Log.ConsoleDebug($"[HelpPlus] 自检: 可用命令 {total} 个，共 {pages} 页，第 1 页 {lines.Count} 行。");
+
+            foreach (var line in lines)
             {
-                TShock.Log.ConsoleDebug("  [HelpPlus 控制台格式] " + ToAnsiColor(line).Replace("\u001b", "<ESC>").TrimEnd());
+                if (line.Length > 0)
+                {
+                    spy.SendMessage(line, 255, 244, 150);
+                }
             }
-            foreach (var line in rendered.Split('\n').Where(l => l.Trim().Length > 0).Skip(1).Take(1))
+
+            var messages = spy.Messages;
+            var withNewline = messages.Count(m => m.Contains('\n') || m.Contains('\r'));
+            TShock.Log.ConsoleDebug(
+                $"[HelpPlus] 自检: 玩家侧实际发出 {messages.Count} 条聊天消息，其中含换行的 {withNewline} 条（必须为 0）。");
+
+            // 逐条 dump，前缀带序号；排查时能直接看出第几条开始坏
+            for (var i = 0; i < messages.Count; i++)
             {
-                TShock.Log.ConsoleDebug("  [HelpPlus 游戏内格式] " + line.Trim());
+                var line = messages[i].Replace("\r", "<CR>").Replace("\n", "<LF>");
+                if (line.Trim().Length == 0)
+                {
+                    line = "<空行>";
+                }
+                TShock.Log.ConsoleDebug($"  [玩家消息 {i + 1}/{messages.Count}] {line}");
             }
         }
         catch (Exception ex)
@@ -90,16 +105,53 @@ public class HelpPlus : TerrariaPlugin
     }
 
     /// <summary>
+    /// 只用来捕获消息的玩家替身：不真的发包，把 <see cref="SendMessage"/> 收到的内容记下来。
+    ///
+    /// Index 取 0（非负）是有意的 —— 这样 <see cref="RenderCommandList"/> 会走"玩家"分支
+    /// 而不是"控制台"分支，测到的就是玩家真正会遇到的那条路径。
+    /// 两个重载都拦：TShock 的 SendMessage(string,byte,byte,byte) 内部会转调 Color 重载。
+    /// </summary>
+    private sealed class CapturingPlayer : TSPlayer
+    {
+        public List<string> Messages { get; } = new();
+
+        public CapturingPlayer() : base(0) { }
+
+        public override void SendMessage(string msg, byte red, byte green, byte blue)
+        {
+            Messages.Add(msg);
+        }
+
+        public override void SendMessage(string msg, Microsoft.Xna.Framework.Color color)
+        {
+            Messages.Add(msg);
+        }
+    }
+
+    /// <summary>
     /// 渲染某一页命令列表。抽成独立方法是为了让自检能在没有客户端连接的情况下
     /// 复用与 <see cref="Help"/> 完全相同的渲染路径，避免"自检通过的代码"和"玩家走的代码"不是同一段。
     /// </summary>
-    private static string RenderCommandList(TSPlayer? player, int page, out int pages, out int total)
+    /// <summary>
+    /// 把一个逻辑页渲染成"一行一条聊天消息"的列表。
+    ///
+    /// 为什么不返回一整段带 '\n' 的文本：实测玩家侧只收到 1 条含换行符的消息
+    /// （自检计数为 1，且其中 1 条仍含 '\n'），客户端把整段塞进一条聊天记录里解析，
+    /// 显示会完全错乱。所以这里自己分行，由调用方逐行发送。
+    ///
+    /// 玩家侧还要限制"一次最多发几行"：聊天消息是一条一条推的，
+    /// 几百条同时推给客户端会被刷屏甚至丢消息。控制台没有这个问题，可以一次列全。
+    /// </summary>
+    private static List<string> RenderCommandListLines(TSPlayer? player, int page, out int pages, out int total)
     {
         var specifier = TShock.Config.Settings.CommandSpecifier;
 
-        // 控制台一次性展示全部命令：控制台没有"翻页再看下一页"的体验，
-        // 分页反而要反复敲 /help 2、/help 3，不如一次列完。
         var isConsole = player == null || player.Index < 0;
+
+        // 玩家侧每页最多这么多"行"（不是命令数）。命令是横向拼在一行里的，
+        // 一行大约放 4~5 个命令，30 行对应 100 个以上命令。
+        const int MaxPlayerLinesPerPage = 30;
+
         var pageSize = isConsole ? int.MaxValue : Config.Settings.PageSize;
         if (pageSize < 1)
         {
@@ -116,29 +168,28 @@ public class HelpPlus : TerrariaPlugin
         }
 
         total = cmdNamesOrder.Count;
-        pages = (int)Math.Ceiling(total / (double)pageSize);
-        if (pages < 1)
+
+        // 命令按每页命令数切片
+        var commandPages = (int)Math.Ceiling(total / (double)pageSize);
+        if (commandPages < 1)
         {
-            pages = 1;
+            commandPages = 1;
         }
 
-        // 页码兜底：原实现只处理 page > pages，page <= 0 会产生负数下标，
-        // 结果是一条空消息（玩家什么都看不到），这里统一拉回第一页。
         if (page < 1)
         {
             page = 1;
         }
-        if (page > pages)
+        if (page > commandPages)
         {
-            page = pages;
+            page = commandPages;
         }
 
         var start = (page - 1) * pageSize;
         var pagedCommands = cmdNamesOrder
             .Skip(start)
             .Take(pageSize)
-            // 格式 /warp（传送点）：命令名后紧跟全角括号注释，没有注释就不加括号。
-            // 控制台走纯文本注释（不带 @ 标记）。
+            // 格式 /warp（传送点）：命令名后紧跟全角括号注释，没有注释就不加括号
             .Select(cmd =>
             {
                 var shortText = GetShort(cmd.Name);
@@ -147,47 +198,72 @@ public class HelpPlus : TerrariaPlugin
             })
             .ToList();
 
-        var stringBuilder = new StringBuilder();
-        var currentLine = new StringBuilder();
-
-        // 用 '\n' 而不是 AppendLine()：AppendLine 在 Windows 上写入 "\r\n"，
-        // 而 TSPlayer.SendMessage 只按 '\n' 切分，每行会残留一个 '\r'，
-        // 发出去后玩家端可能整条消息都不渲染。
-        stringBuilder.Append(GetString($"[c/FE727D:命令列表] ([c/68A7E8:{page}]/[c/EC6AC9:{pages}]):")).Append('\n');
-
         var wrapWidth = Config.Settings.WithSize;
         if (wrapWidth < 20)
         {
             wrapWidth = 120;
         }
 
+        // 先把全部命令折成"行"
+        var allLines = new List<string>();
+        var currentLine = new StringBuilder();
         foreach (var cmdWithSpace in pagedCommands.Select(cmd => $"{cmd} "))
         {
             if (currentLine.Length + cmdWithSpace.Length > wrapWidth)
             {
-                stringBuilder.Append(currentLine.ToString().Trim()).Append('\n');
+                allLines.Add(currentLine.ToString().Trim());
                 currentLine.Clear();
             }
             currentLine.Append(cmdWithSpace);
         }
-
         if (currentLine.Length > 0)
         {
-            stringBuilder.Append(currentLine.ToString().Trim()).Append('\n');
+            allLines.Add(currentLine.ToString().Trim());
         }
 
-        if (page < pages)
+        // 玩家侧再按"行数"切一次页，避免一次推太多条聊天消息
+        var linesPerPage = isConsole ? allLines.Count : Math.Min(allLines.Count, MaxPlayerLinesPerPage);
+        if (linesPerPage < 1)
         {
-            stringBuilder.Append(GetString($"请输入[c/68A7E8:{specifier}help {page + 1}]查看更多")).Append('\n');
+            linesPerPage = 1;
+        }
+
+        var linePages = (int)Math.Ceiling(allLines.Count / (double)linesPerPage);
+        if (linePages < 1)
+        {
+            linePages = 1;
+        }
+
+        var linePage = page;
+        if (linePage > linePages)
+        {
+            linePage = linePages;
+        }
+
+        pages = isConsole ? 1 : linePages;
+
+        var take = isConsole ? allLines.Count : Math.Min(linesPerPage, MaxPlayerLinesPerPage);
+        var lineStart = (linePage - 1) * linesPerPage;
+
+        var result = new List<string>
+        {
+            GetString($"[c/FE727D:命令列表] ([c/68A7E8:{linePage}]/[c/EC6AC9:{linePages}]):"),
+        };
+
+        result.AddRange(allLines.Skip(lineStart).Take(take));
+
+        if (linePage < linePages)
+        {
+            result.Add(GetString($"请输入[c/68A7E8:{specifier}help {linePage + 1}]查看更多"));
         }
 
         // 兜底：真的没有任何可展示内容时也要给一句话，不能静默返回。
         if (pagedCommands.Count == 0)
         {
-            stringBuilder.Append(GetString("[c/FE727D:没有可显示的命令。]")).Append('\n');
+            result.Add(GetString("[c/FE727D:没有可显示的命令。]"));
         }
 
-        return stringBuilder.ToString();
+        return result;
     }
 
     private static void GeneralHooks_ReloadEvent(ReloadEventArgs e)
@@ -217,18 +293,30 @@ public class HelpPlus : TerrariaPlugin
             var isConsole = args.Player == null || args.Player.Index < 0;
 
             // 渲染与自检走同一段代码，保证"自检通过"就等于"玩家能看到"
-            var text = RenderCommandList(args.Player, page, out _, out _);
+            var lines = RenderCommandListLines(args.Player, page, out _, out _);
 
             if (isConsole)
             {
                 // 控制台不吃 Terraria 的 [c/XXXXXX:...] 标记，转成 ANSI 颜色后再打，
                 // 这样控制台与游戏内颜色一致（指令青、命令名金、注释浅蓝）。
-                Console.WriteLine(ToAnsiColor(text));
+                foreach (var line in lines)
+                {
+                    Console.WriteLine(ToAnsiColor(line));
+                }
             }
             else
             {
+                // 一行一条消息：实测把整段多行文本交给 SendMessage，玩家侧只收到 1 条
+                // 含换行符的消息，客户端解析后显示完全错乱。
                 // 走到这里说明 isConsole 为 false，args.Player 必然非空
-                args.Player!.SendMessage(text, 255, 244, 150);
+                foreach (var line in lines)
+                {
+                    if (line.Length == 0)
+                    {
+                        continue;
+                    }
+                    args.Player!.SendMessage(line, 255, 244, 150);
+                }
             }
         }
         else
@@ -336,9 +424,15 @@ public class HelpPlus : TerrariaPlugin
 
     private static string GetShort(string str)
     {
-        return Config.Settings.DisPlayShort && Config.Settings.ShortCommands.TryGetValue(str, out var value)
-            ? $"[c/FF5260:@]{value.Color(Utils.BoldHighlight)}"
-            : "";
+        if (!Config.Settings.DisPlayShort ||
+            !Config.Settings.ShortCommands.TryGetValue(str, out var value))
+        {
+            return "";
+        }
+
+        // 显示为“/help（帮助）”，不再在括号前加 @ 或额外颜色标记。
+        // 这里只影响帮助列表的文字渲染，不碰 /help 命令注册、别名和替换逻辑。
+        return (value ?? "").Trim();
     }
 
     protected override void Dispose(bool disposing)
