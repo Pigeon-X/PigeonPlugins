@@ -72,11 +72,11 @@ public class HelpPlus : TerrariaPlugin
             TShock.Log.ConsoleDebug($"[HelpPlus] 自检: 可用命令 {total} 个，共 {pages} 页，第 1 页 {lineCount} 行、{rendered.Length} 字符。");
 
             // 格式抽查（同样只在 Debug 级输出）：确认两条链路各自的渲染都对
-            // 控制台：纯文本 /指令（注释）；游戏内：仍带 [c/...] 富文本与 @ 附注标记
+            // 控制台：ANSI 颜色；游戏内：Terraria [c/...] 富文本
             var rawLines = rendered.Split('\n').Where(l => l.Trim().Length > 0).Take(3).Select(l => l.Trim());
             foreach (var line in rawLines)
             {
-                TShock.Log.ConsoleDebug("  [HelpPlus 控制台格式] " + StripColorTags(line));
+                TShock.Log.ConsoleDebug("  [HelpPlus 控制台格式] " + ToAnsiColor(line).Replace("\u001b", "<ESC>").TrimEnd());
             }
             foreach (var line in rendered.Split('\n').Where(l => l.Trim().Length > 0).Skip(1).Take(1))
             {
@@ -141,7 +141,7 @@ public class HelpPlus : TerrariaPlugin
             // 控制台走纯文本注释（不带 @ 标记）。
             .Select(cmd =>
             {
-                var shortText = GetShort(cmd.Name, isConsole);
+                var shortText = GetShort(cmd.Name);
                 return $"[c/60D6D0:{specifier}][c/F1D06C:{cmd.Name}]" +
                        (shortText.Length > 0 ? $"（{shortText}）" : "");
             })
@@ -221,9 +221,9 @@ public class HelpPlus : TerrariaPlugin
 
             if (isConsole)
             {
-                // 控制台不吃 Terraria 的 [c/XXXXXX:...] 颜色标记，去掉后再打，
-                // 否则终端里满屏都是颜色代码。
-                Console.WriteLine(StripColorTags(text));
+                // 控制台不吃 Terraria 的 [c/XXXXXX:...] 标记，转成 ANSI 颜色后再打，
+                // 这样控制台与游戏内颜色一致（指令青、命令名金、注释浅蓝）。
+                Console.WriteLine(ToAnsiColor(text));
             }
             else
             {
@@ -290,37 +290,55 @@ public class HelpPlus : TerrariaPlugin
     }
 
     /// <summary>
-    /// 去掉 Terraria 聊天颜色标记 <c>[c/RRGGBB:文本]</c> 与 <c>[i:物品]</c> 之类标签，
-    /// 只留下纯文本。控制台直接输出时用，避免终端里满屏颜色代码。
+    /// 把 Terraria 的聊天颜色标记 <c>[c/RRGGBB:文本]</c> 转成 ANSI 转义序列，
+    /// 让服务器控制台也显示出与游戏内一致的颜色（指令青色、命令名金色、注释浅蓝）。
+    ///
+    /// 之前这里是"把标记剥掉"，结果控制台全是白字，注释看不出层次。
+    /// 其余形如 <c>[i:nnnn]</c> 的标签在控制台没有意义，直接去掉。
     /// </summary>
-    private static string StripColorTags(string text)
+    private static string ToAnsiColor(string text)
     {
         if (string.IsNullOrEmpty(text))
         {
             return string.Empty;
         }
 
-        // [c/XXXXXX:内容] -> 内容
-        var stripped = System.Text.RegularExpressions.Regex.Replace(
-            text, @"\[c/[0-9A-Fa-f]{6}:([^\]]*)\]", "$1");
+        const string AnsiReset = "\u001b[0m";
 
-        // 其余形如 [xxx:yyy] 或 [i:nnnn] 的标签整体去掉
-        stripped = System.Text.RegularExpressions.Regex.Replace(stripped, @"\[[a-zA-Z]+:[^\]]*\]", "");
+        // 逐行处理，每行末尾补一个 reset，避免颜色渗到下一行或 TShock 的其它输出上
+        var lines = text.Replace("\r", string.Empty).Split('\n');
+        var result = new StringBuilder();
 
-        return stripped;
-    }
-
-    private static string GetShort(string str, bool plain = false)
-    {
-        if (!Config.Settings.DisPlayShort || !Config.Settings.ShortCommands.TryGetValue(str, out var value))
+        foreach (var line in lines)
         {
-            return "";
+            var converted = System.Text.RegularExpressions.Regex.Replace(
+                line,
+                @"\[c/([0-9A-Fa-f]{6}):([^\]]*)\]",
+                match =>
+                {
+                    var hex = match.Groups[1].Value;
+                    var content = match.Groups[2].Value;
+                    var r = Convert.ToInt32(hex.Substring(0, 2), 16);
+                    var g = Convert.ToInt32(hex.Substring(2, 2), 16);
+                    var b = Convert.ToInt32(hex.Substring(4, 2), 16);
+                    // 用 24 位真彩色；终端不支持时会自动退化成默认色，不会显示乱码
+                    return $"\u001b[38;2;{r};{g};{b}m{content}\u001b[0m";
+                });
+
+            // 其余 [xxx:yyy] 标签（如 [i:74]）在控制台无意义，去掉
+            converted = System.Text.RegularExpressions.Regex.Replace(converted, @"\[[a-zA-Z]+:[^\]]*\]", "");
+
+            result.Append(converted).Append(AnsiReset).Append('\n');
         }
 
-        // 游戏内用 Terraria 富文本：@ 是"附注"的视觉标记；控制台是纯文本，不要这个标记
-        return plain
-            ? value
-            : $"[c/FF5260:@]{value.Color(Utils.BoldHighlight)}";
+        return result.ToString();
+    }
+
+    private static string GetShort(string str)
+    {
+        return Config.Settings.DisPlayShort && Config.Settings.ShortCommands.TryGetValue(str, out var value)
+            ? $"[c/FF5260:@]{value.Color(Utils.BoldHighlight)}"
+            : "";
     }
 
     protected override void Dispose(bool disposing)
