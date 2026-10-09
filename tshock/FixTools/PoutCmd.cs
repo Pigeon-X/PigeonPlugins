@@ -767,7 +767,7 @@ internal class PoutCmd
         // 检查是否有确认参数
         if (args.Parameters.Count < 2 || !args.Parameters[1].Equals("yes", StringComparison.OrdinalIgnoreCase))
         {
-            plr.SendMessage(Grad($"此操作会清理tshock.sqlite数据库中的指定数据表，且不可逆转！"), color);
+            plr.SendMessage(Grad($"此操作会清理【当前数据库】中的指定数据表（SQLite / MySQL 通用），且不可逆转！"), color);
             plr.SendMessage($"确认操作请输入:/{pt} sql yes", color);
             return;
         }
@@ -1276,9 +1276,15 @@ internal class PoutCmd
         // 服务器还有人则返回
         if (TShock.Utils.GetActivePlayerCount() != 0) return;
 
-        // 标记正在重置服务器，在玩家加入事件中阻止玩家加入（世界加载完成自动关闭标志）
-        IsResetting = true;
-
+        // ================================================================
+        // 世界重建改由 TSM 控制面执行（POST /tsm/world/rebuild）。
+        // 本插件在此处【只发请求】：
+        //   不删世界文件、不写 server.properties、不调 /off 或 /off-nosave、
+        //   不 Environment.Exit、不清 users、不做任何降级。
+        // ================================================================
+        // ① 必须先完成"本插件负责的"数据清理。
+        //    TSM 收到 rebuild 请求后【立刻停服换图】，若把清表放在 API 调用之后，
+        //    会被停服切断 → 出现"换了图但没清表"。所以顺序固定为：先清表，再请求重建。
         WritePlayer.ExportAll(plr, WritePlayer.WriteDir);
         DoCommand(plr, Config.BeforeCMD);
         ClearSql(plr);
@@ -1286,23 +1292,21 @@ internal class PoutCmd
         // 重置进度锁
         Config.UnLockNpc.Clear();
         Config.Write();
+        TShock.Log.ConsoleInfo($"[{PluginName}] 本插件数据清理完成（清表不含 users）；接下来请求 TSM 重建世界。");
 
-        // 清除缓存的世界元数据 确保完成删除地图
-        if (Main.WorldFileMetadata is not null)
+        // ② 只发重建请求：不删世界文件、不写 server.properties、不调 /off、不 Environment.Exit
+        if (!TsmRebuildClient.TryRebuild("FixTools 请求重建世界", "FixTools", out var tsmMsg, out var tsmCode))
         {
-            Main.WorldFileMetadata.Type = FileType.World;
-            Main.WorldFileMetadata = null;
+            plr.SendErrorMessage($"[{PluginName}] {tsmMsg}｜注意：本插件数据已清理，但世界未更换，请修复后重试。");
+            TShock.Log.ConsoleError($"[{PluginName}] 世界重建未受理：{tsmMsg}（HTTP {tsmCode}）；数据已清、世界未换。");
+            IsResetting = false;
+            return;
         }
-        // 回到主菜单
-        Main.gameMenu = true;
-        // 状态菜单
-        Main.menuMode = MenuID.Status;
+        plr.SendSuccessMessage($"[{PluginName}] {tsmMsg}");
 
-        DeleteFile(plr); // 删除文件含地图
-
-        Thread.Sleep(500);  // 等待0.5秒
-        RandomCopyMap(plr); // 随机复制启动地图
-        DoCommand(plr, Config.AfterCMD); // 执行关服指令 让自动重启启动项创建新地图 重启也能清空TS程序内存
+        // 本插件不再重启服务器，关闭"加入拦截"标志
+        IsResetting = false;
+        TShock.Log.ConsoleInfo($"[{PluginName}] 世界重建已提交 TSM（HTTP {tsmCode}）；本插件不删图、不改 server.properties、不关服。");
     }
     #endregion
 
