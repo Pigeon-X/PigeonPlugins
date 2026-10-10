@@ -324,15 +324,28 @@ public class HelpPlus : TerrariaPlugin
                 {
                     // 兜底：绝不静默返回，否则玩家看到的就是"输入 /help 没反应"
                     args.Player!.SendMessage(GetString("[c/FE727D:/help 没有可显示的内容]"), 255, 244, 150);
+                    return;
                 }
-                foreach (var line in lines)
+
+                // ★ 节流发送（根因修复）
+                // 一页 30+ 条聊天消息如果在同一帧内全部推给客户端，客户端会丢消息 ——
+                // 现象就是"输入 /help 完全没反应"。改成每 50ms 发 1 条：
+                // 第一条立即发（体感即时），整页约 1.5 秒发完，客户端不会丢。
+                var target = args.Player!;
+                var queue = lines.FindAll(l => !string.IsNullOrEmpty(l));
+                int cursor = -1;
+                System.Threading.Timer? pump = null;
+                pump = new System.Threading.Timer(_ =>
                 {
-                    if (line.Length == 0)
+                    try
                     {
-                        continue;
+                        int i = System.Threading.Interlocked.Increment(ref cursor);
+                        if (i >= queue.Count) { pump!.Dispose(); return; }
+                        if (target == null || !target.Active) { pump!.Dispose(); return; }
+                        target.SendMessage(queue[i], 255, 244, 150);
                     }
-                    args.Player!.SendMessage(line, 255, 244, 150);
-                }
+                    catch { try { pump!.Dispose(); } catch { } }
+                }, null, 0, 50);
             }
         }
         else
