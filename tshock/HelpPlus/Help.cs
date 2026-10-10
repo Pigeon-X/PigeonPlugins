@@ -294,6 +294,18 @@ public class HelpPlus : TerrariaPlugin
             // 渲染与自检走同一段代码，保证"自检通过"就等于"玩家能看到"
             var lines = RenderCommandListLines(args.Player, page, out _, out _);
 
+            // 诊断（INFO 级，始终写日志）：玩家反馈 /help 无反应时，用来区分
+            // 「命令没进来」和「进来了但输出被拦」。
+            try
+            {
+                TShock.Log.Info($"[HelpPlus] /help 调用：玩家={args.Player?.Name ?? "(console)"}"
+                    + $" 组={args.Player?.Group?.Name ?? "?"}"
+                    + $" Index={args.Player?.Index ?? -99}"
+                    + $" 参数={args.Parameters.Count}"
+                    + $" 输出={lines.Count} 行");
+            }
+            catch { }
+
             if (isConsole)
             {
                 // 控制台不吃 Terraria 的 [c/XXXXXX:...] 标记，转成 ANSI 颜色后再打，
@@ -308,6 +320,11 @@ public class HelpPlus : TerrariaPlugin
                 // 一行一条消息：实测把整段多行文本交给 SendMessage，玩家侧只收到 1 条
                 // 含换行符的消息，客户端解析后显示完全错乱。
                 // 走到这里说明 isConsole 为 false，args.Player 必然非空
+                if (lines.Count == 0)
+                {
+                    // 兜底：绝不静默返回，否则玩家看到的就是"输入 /help 没反应"
+                    args.Player!.SendMessage(GetString("[c/FE727D:/help 没有可显示的内容]"), 255, 244, 150);
+                }
                 foreach (var line in lines)
                 {
                     if (line.Length == 0)
