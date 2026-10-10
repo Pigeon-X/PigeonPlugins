@@ -70,10 +70,24 @@ internal partial class PControl : TerrariaPlugin
     /// <summary>
     /// 自动计划线程，包括自动重置，自动重启，自动执行指令
     /// </summary>
-    private readonly Thread thread_auto = new Thread(thread_autoFun);
-    private static void thread_autoFun(object? obj)
+    /// <remarks>
+    /// 原先用字段初始值设定项直接 <c>new Thread(thread_autoFun)</c>；把 thread_autoFun 改成
+    /// 实例方法后字段初始化器不能再引用它（CS0236），所以改为惰性属性。
+    /// </remarks>
+    private Thread? _threadAuto;
+    private Thread thread_auto => _threadAuto ??= new Thread(thread_autoFun) { IsBackground = true };
+
+    /// <summary>
+    /// 热重载/卸载时的终止标志。
+    /// 这些线程原先只用 <c>Netplay.Disconnect</c>（进程级）作为退出条件，插件热重载后
+    /// 旧实例的线程会一直活着并累积（Dispose 不停它们）。改为实例级终止标志后，
+    /// Dispose 置位即可让本实例的线程退出。线程方法同时保留静态语境所需的能力。
+    /// </summary>
+    private volatile bool _threadStopRequested;
+
+    private void thread_autoFun(object? obj)
     {
-        while (!Netplay.Disconnect)
+        while (!Netplay.Disconnect && !_threadStopRequested)
         {
             try
             {
@@ -193,9 +207,9 @@ internal partial class PControl : TerrariaPlugin
     /// 手动重置线程
     /// </summary>
     private Thread? thread_reset;
-    private static void thread_resetFun(object? obj)
+    private void thread_resetFun(object? obj)
     {
-        while (countdownReset.time >= 0 && !Netplay.Disconnect && countdownReset.enable)
+        while (countdownReset.time >= 0 && !Netplay.Disconnect && countdownReset.enable && !_threadStopRequested)
         {
             if (countdownReset.time >= 3600 * 5)//5h ~ 无穷，每隔1h发送广播
             {
@@ -255,9 +269,9 @@ internal partial class PControl : TerrariaPlugin
     /// 手动重启线程
     /// </summary>
     private Thread? thread_reload;
-    private static void thread_reloadFun(object? obj)
+    private void thread_reloadFun(object? obj)
     {
-        while (countdownRestart.time >= 0 && !Netplay.Disconnect && countdownRestart.enable)
+        while (countdownRestart.time >= 0 && !Netplay.Disconnect && countdownRestart.enable && !_threadStopRequested)
         {
             if (countdownRestart.time >= 3600 * 5)//大于5小时时
             {
@@ -317,9 +331,9 @@ internal partial class PControl : TerrariaPlugin
     /// 手动指令线程
     /// </summary>
     private Thread? thread_com;
-    private static void thread_comFun(object? obj)
+    private void thread_comFun(object? obj)
     {
-        while (countdownCom.time >= 0 && !Netplay.Disconnect && countdownCom.enable)
+        while (countdownCom.time >= 0 && !Netplay.Disconnect && countdownCom.enable && !_threadStopRequested)
         {
             if (countdownCom.time <= 0)
             {
@@ -388,6 +402,25 @@ internal partial class PControl : TerrariaPlugin
     {
         if (disposing)
         {
+            // 先请求本实例的后台线程退出（尤其是常驻的 thread_auto），
+            // 避免热重载后旧线程继续累积。线程都是 IsBackground，最多等 2 秒。
+            try
+            {
+                _threadStopRequested = true;
+                foreach (var t in new[] { thread_auto, thread_com, thread_reload, thread_reset })
+                {
+                    try
+                    {
+                        if (t is { IsAlive: true } && !t.Join(TimeSpan.FromSeconds(2)))
+                        {
+                            TShock.Log.ConsoleWarn($"[流光系统] 计划书线程未在 2 秒内退出：{t.Name ?? "thread"}（下一步继续卸载）");
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
             ServerApi.Hooks.NpcAIUpdate.Deregister(this, this.NPCAIUpdate);
             ServerApi.Hooks.NpcStrike.Deregister(this, this.NPCStrike);
             ServerApi.Hooks.GamePostInitialize.Deregister(this, this.PostInit);
