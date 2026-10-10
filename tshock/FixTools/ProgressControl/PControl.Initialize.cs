@@ -2137,6 +2137,9 @@ internal partial class PControl : TerrariaPlugin
             return;
         }
 
+        _bossLockSource = "AI更新";
+        _bossLockPlayerName = "-";
+
         switch (args.Npc.netID)
         {
             // TODO: bossname i18n
@@ -2267,6 +2270,9 @@ internal partial class PControl : TerrariaPlugin
         {
             return;
         }
+
+        _bossLockSource = "受击";
+        _bossLockPlayerName = args.Player?.name ?? "-";
 
         switch (args.Npc.netID)
         {

@@ -326,16 +326,71 @@ internal partial class PControl : TerrariaPlugin
     /// <param name="enableBC">是否发出广播</param>
     private void Function(NPC npc, string bossname, bool enableBC = true)
     {
-        var jiange = (DateTime.Now - config.StartServerDate).TotalHours;
-        if (jiange < config.ProgressLockTimeForStartServerDate[bossname])
+        if (!config.ProgressLockTimeForStartServerDate.TryGetValue(bossname, out var limit))
         {
+            return;
+        }
+
+        var jiange = (DateTime.Now - config.StartServerDate).TotalHours;
+        var slot = npc.whoAmI;
+        var netId = npc.netID;
+
+        if (jiange < limit)
+        {
+            // type 归零后 FullName 会变，名字必须提前取
+            var npcName = npc.FullName;
+            var remain = limit - jiange;
             npc.active = false;
             npc.type = 0;
-            TSPlayer.All.SendData(PacketTypes.NpcUpdate, "", npc.whoAmI);
+            TSPlayer.All.SendData(PacketTypes.NpcUpdate, "", slot);
+            BossLockAudit(false, bossname, npcName, netId, slot, jiange, remain, enableBC);
             if (enableBC)
             {
-                TSPlayer.All.SendInfoMessage(GetString($"{npc.FullName} 未到解锁时间，还剩{HoursToM(config.ProgressLockTimeForStartServerDate[bossname] - jiange, "28FFB8")}"));
+                TSPlayer.All.SendInfoMessage(GetString($"{npcName} 未到解锁时间，还剩{HoursToM(remain, "28FFB8")}"));
             }
+        }
+        else
+        {
+            // 对照组：已解锁 BOSS 正常放行（按槽位去重，同一槽位最多每 10 分钟记一条，避免刷屏）
+            var now = DateTime.Now;
+            if (!PassLoggedSlots.TryGetValue(slot, out var rec) || rec.NetId != netId || (now - rec.At).TotalMinutes >= 10)
+            {
+                PassLoggedSlots[slot] = (netId, now);
+                BossLockAudit(true, bossname, npc.FullName, netId, slot, jiange, limit - jiange, enableBC);
+            }
+        }
+    }
+
+    /// <summary>放行日志去重：NPC 槽位 → (netID, 上次记录时间)</summary>
+    private readonly Dictionary<int, (int NetId, DateTime At)> PassLoggedSlots = new();
+
+    /// <summary>当前拦截/放行调用的触发来源与玩家名（AI 更新拿不到玩家；受击能拿到）</summary>
+    private string _bossLockSource = "AI";
+    private string _bossLockPlayerName = "-";
+
+    /// <summary>
+    /// 进度锁审计日志：BOSS 名 / 玩家 / 距解锁剩余小时 / 世界地图 ID，
+    /// 落 TShock 日志（ServerLog）+ 控制台，供审计、申诉、Bot 对照与运维排查。
+    /// </summary>
+    private static void BossLockAudit(bool passed, string bossname, string npcName, int netId, int slot,
+        double elapsedHours, double remainHours, bool broadcast)
+    {
+        try
+        {
+            var wid = Main.worldID;
+            var player = _instance?._bossLockPlayerName ?? "-";
+            var source = _instance?._bossLockSource ?? "AI";
+            var head = passed ? "[进度锁] 放行已解锁BOSS:" : "[进度锁] 拦截未解锁BOSS:";
+            var rest = passed
+                ? $"已过={elapsedHours:F1}h 解锁阈值={Math.Max(0, elapsedHours + remainHours):F1}h"
+                : $"距解锁剩余={Math.Max(0, remainHours):F1}h 开服已过={elapsedHours:F1}h";
+            TShock.Log.ConsoleInfo(
+                $"{head} {bossname} (npc={npcName}, netID={netId}, slot={slot}) 世界ID={wid} {rest} " +
+                $"开服时间={config.StartServerDate:yyyy-MM-dd HH:mm:ss} 触发={source} 广播={(broadcast ? "是" : "否")} 玩家={player}");
+        }
+        catch
+        {
+            // 日志永远不能影响主流程
         }
     }
 
