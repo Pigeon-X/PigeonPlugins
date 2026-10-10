@@ -152,12 +152,9 @@ public class HelpPlus : TerrariaPlugin
         // 一行大约放 4~5 个命令，30 行对应 100 个以上命令。
         const int MaxPlayerLinesPerPage = 30;
 
-        var pageSize = isConsole ? int.MaxValue : Config.Settings.PageSize;
-        if (pageSize < 1)
-        {
-            pageSize = 30;
-        }
-
+        // 分页单位：玩家与控制台都按「行」分页（见下方 linesPerPage）。
+        // 这里不再按"命令数"切页 —— 历史上曾用配置的「每页行数」(200) 当命令数，
+        // 使 commandPages 恒为 1，于是 /help 2 被夹回第 1 页，玩家看到"翻页无效"。
         var cmdNamesOrder = Commands.ChatCommands
             .Where(cmd => cmd.CanRun(player) && (cmd.Name != "setup" || TShock.SetupToken != 0))
             .ToList();
@@ -169,26 +166,12 @@ public class HelpPlus : TerrariaPlugin
 
         total = cmdNamesOrder.Count;
 
-        // 命令按每页命令数切片
-        var commandPages = (int)Math.Ceiling(total / (double)pageSize);
-        if (commandPages < 1)
-        {
-            commandPages = 1;
-        }
-
         if (page < 1)
         {
             page = 1;
         }
-        if (page > commandPages)
-        {
-            page = commandPages;
-        }
 
-        var start = (page - 1) * pageSize;
         var pagedCommands = cmdNamesOrder
-            .Skip(start)
-            .Take(pageSize)
             // 格式 /warp（传送点）：命令名后紧跟全角括号注释，没有注释就不加括号
             .Select(cmd =>
             {
@@ -292,7 +275,7 @@ public class HelpPlus : TerrariaPlugin
             var isConsole = args.Player == null || args.Player.Index < 0;
 
             // 渲染与自检走同一段代码，保证"自检通过"就等于"玩家能看到"
-            var lines = RenderCommandListLines(args.Player, page, out _, out _);
+            var lines = RenderCommandListLines(args.Player, page, out int pageCount, out int cmdTotal);
 
             // 诊断（INFO 级，始终写日志）：玩家反馈 /help 无反应时，用来区分
             // 「命令没进来」和「进来了但输出被拦」。
@@ -302,6 +285,9 @@ public class HelpPlus : TerrariaPlugin
                     + $" 组={args.Player?.Group?.Name ?? "?"}"
                     + $" Index={args.Player?.Index ?? -99}"
                     + $" 参数={args.Parameters.Count}"
+                    + $" 请求页={page}"
+                    + $" 可用命令={cmdTotal}"
+                    + $" 总页数={pageCount}"
                     + $" 输出={lines.Count} 行");
             }
             catch { }
