@@ -13,7 +13,14 @@ namespace FixTools;
 /// </summary>
 internal static class TsmRebuildClient
 {
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
+    // TSM 控制面只走本机 127.0.0.1，绝不走系统代理
+    // （避免被 Clash 等系统代理劫持成 404，产生「每 5 分钟自动重连异常」日志噪音）
+    private static readonly HttpClient Http = new(new HttpClientHandler
+    {
+        UseProxy = false,
+        Proxy = null
+    })
+    { Timeout = TimeSpan.FromSeconds(10) };
 
     internal sealed class TsmOptions
     {
