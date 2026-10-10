@@ -58,23 +58,25 @@ public class HelpPlus : TerrariaPlugin
         try
         {
             var registered = Commands.ChatCommands.FindAll(c => c.HasAlias("help"));
-            // 这条改成 INFO：玩家反馈「/help 无反应、/帮助 正常」时，
-            // 必须能直接从日志看出是不是有别的插件也占了 help 别名（TS 里先注册的先被 Find 命中）。
-            TShock.Log.Info($"[HelpPlus] 自检: 命令表中的 help 条目 = {registered.Count}");
-            foreach (var c in registered)
-            {
-                try
-                {
-                    TShock.Log.Info($"[HelpPlus] 自检:   name={c.Name}"
-                        + $" names=[{string.Join(",", c.Names)}]"
-                        + $" 权限=[{string.Join(",", c.Permissions)}]"
-                        + $" 来源={c.CommandDelegate?.Method?.DeclaringType?.Assembly?.GetName()?.Name ?? "?"}");
-                }
-                catch { }
-            }
-            // 另外把 TShock 原生 help 是否被删干净也记下来
             var allHelpAlias = Commands.ChatCommands.FindAll(c => c.Names.Contains("help"));
-            TShock.Log.Info($"[HelpPlus] 自检: Names 里含 \"help\" 的条目 = {allHelpAlias.Count}");
+            // 降噪：正常情况下只留一行摘要；条目数不是 1（有别的插件抢了 help）或
+            // 开了「诊断日志」时，才把每条命令的明细展开写出来。
+            TShock.Log.Info($"[HelpPlus] 自检: help 条目={registered.Count}，Names 含 help={allHelpAlias.Count}"
+                + $"，来源={registered.FirstOrDefault()?.CommandDelegate?.Method?.DeclaringType?.Assembly?.GetName()?.Name ?? "?"}");
+            if (registered.Count != 1 || Config.Settings.DebugLog)
+            {
+                foreach (var c in registered)
+                {
+                    try
+                    {
+                        TShock.Log.Info($"[HelpPlus] 自检:   name={c.Name}"
+                            + $" names=[{string.Join(",", c.Names)}]"
+                            + $" 权限=[{string.Join(",", c.Permissions)}]"
+                            + $" 来源={c.CommandDelegate?.Method?.DeclaringType?.Assembly?.GetName()?.Name ?? "?"}");
+                    }
+                    catch { }
+                }
+            }
 
             if (registered.Count == 0)
             {
@@ -295,18 +297,23 @@ public class HelpPlus : TerrariaPlugin
 
             // 诊断（INFO 级，始终写日志）：玩家反馈 /help 无反应时，用来区分
             // 「命令没进来」和「进来了但输出被拦」。
-            try
+            // 降噪：正常调用不写日志（TShock 自己那行「执行了 /help」已经够用），
+            // 只有「渲染结果为空」这种异常，或 HelpPlus.json 里把「诊断日志」打开时才记。
+            if (lines.Count == 0 || Config.Settings.DebugLog)
             {
-                TShock.Log.Info($"[HelpPlus] /help 调用：玩家={args.Player?.Name ?? "(console)"}"
-                    + $" 组={args.Player?.Group?.Name ?? "?"}"
-                    + $" Index={args.Player?.Index ?? -99}"
-                    + $" 参数={args.Parameters.Count}"
-                    + $" 请求页={page}"
-                    + $" 可用命令={cmdTotal}"
-                    + $" 总页数={pageCount}"
-                    + $" 输出={lines.Count} 行");
+                try
+                {
+                    TShock.Log.Info($"[HelpPlus] /help 调用：玩家={args.Player?.Name ?? "(console)"}"
+                        + $" 组={args.Player?.Group?.Name ?? "?"}"
+                        + $" Index={args.Player?.Index ?? -99}"
+                        + $" 参数={args.Parameters.Count}"
+                        + $" 请求页={page}"
+                        + $" 可用命令={cmdTotal}"
+                        + $" 总页数={pageCount}"
+                        + $" 输出={lines.Count} 行");
+                }
+                catch { }
             }
-            catch { }
 
             if (isConsole)
             {

@@ -18,6 +18,13 @@ public class Config
     public bool OrderByLetter;
     
     [JsonProperty("简短提示开关")] public bool DisPlayShort = true;
+
+    /// <summary>
+    /// 每次 /help 都往日志写一行调用详情。默认关闭（正常情况只留 TShock 自己的
+    /// 「执行了 /help」一行）；排查「命令没进来 / 输出被拦」时再打开。
+    /// 无论该开关如何，输出为 0 行的异常情况始终会记一行。
+    /// </summary>
+    [JsonProperty("诊断日志")] public bool DebugLog;
     
     [JsonProperty("简短提示对应")]
     public Dictionary<string, string> ShortCommands;
