@@ -58,7 +58,23 @@ public class HelpPlus : TerrariaPlugin
         try
         {
             var registered = Commands.ChatCommands.FindAll(c => c.HasAlias("help"));
-            TShock.Log.ConsoleDebug($"[HelpPlus] 自检: 命令表中的 help 条目 = {registered.Count}");
+            // 这条改成 INFO：玩家反馈「/help 无反应、/帮助 正常」时，
+            // 必须能直接从日志看出是不是有别的插件也占了 help 别名（TS 里先注册的先被 Find 命中）。
+            TShock.Log.Info($"[HelpPlus] 自检: 命令表中的 help 条目 = {registered.Count}");
+            foreach (var c in registered)
+            {
+                try
+                {
+                    TShock.Log.Info($"[HelpPlus] 自检:   name={c.Name}"
+                        + $" names=[{string.Join(",", c.Names)}]"
+                        + $" 权限=[{string.Join(",", c.Permissions)}]"
+                        + $" 来源={c.CommandDelegate?.Method?.DeclaringType?.Assembly?.GetName()?.Name ?? "?"}");
+                }
+                catch { }
+            }
+            // 另外把 TShock 原生 help 是否被删干净也记下来
+            var allHelpAlias = Commands.ChatCommands.FindAll(c => c.Names.Contains("help"));
+            TShock.Log.Info($"[HelpPlus] 自检: Names 里含 \"help\" 的条目 = {allHelpAlias.Count}");
 
             if (registered.Count == 0)
             {
@@ -313,25 +329,15 @@ public class HelpPlus : TerrariaPlugin
                     return;
                 }
 
-                // ★ 节流发送（根因修复）
-                // 一页 30+ 条聊天消息如果在同一帧内全部推给客户端，客户端会丢消息 ——
-                // 现象就是"输入 /help 完全没反应"。改成每 50ms 发 1 条：
-                // 第一条立即发（体感即时），整页约 1.5 秒发完，客户端不会丢。
-                var target = args.Player!;
-                var queue = lines.FindAll(l => !string.IsNullOrEmpty(l));
-                int cursor = -1;
-                System.Threading.Timer? pump = null;
-                pump = new System.Threading.Timer(_ =>
+                // 立即整页发出（原来的速度）。之前试过 50ms/条节流，实测偏慢，已还原。
+                foreach (var line in lines)
                 {
-                    try
+                    if (line.Length == 0)
                     {
-                        int i = System.Threading.Interlocked.Increment(ref cursor);
-                        if (i >= queue.Count) { pump!.Dispose(); return; }
-                        if (target == null || !target.Active) { pump!.Dispose(); return; }
-                        target.SendMessage(queue[i], 255, 244, 150);
+                        continue;
                     }
-                    catch { try { pump!.Dispose(); } catch { } }
-                }, null, 0, 50);
+                    args.Player!.SendMessage(line, 255, 244, 150);
+                }
             }
         }
         else
