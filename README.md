@@ -42,9 +42,22 @@ out\Release\
 
 ## 已收录
 
-TShock：AntiCheatingTool、FixTools、TileHelper、CGive、HelpPlus、PlayerReward、CommandTool、PlaceholderAPI、Chameleon、MapTp、TeleportRequest、VeinMiner、ProgressBag、ProgressControls、PlayerSpeed、RandomFishingLoot、RandRespawn、PersonalPermission、PerPlayerLoot、SwitchCommands、VotePlus、LazyAPI、PermaBuff、Permabuffs、PeaceMode。
+TShock：AntiCheatingTool、FixTools、TileHelper、CGive、HelpPlus、PlayerReward、CommandTool、PlaceholderAPI、Chameleon、MapTp、TeleportRequest、VeinMiner、ProgressBag、PlayerSpeed、RandomFishingLoot、RandRespawn、PersonalPermission、PerPlayerLoot、SwitchCommands、VotePlus、LazyAPI、PermaBuff、Permabuffs、PeaceMode。
 
 TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool、FixTools、145修复小公举、MapTp、TeleportRequest、ProgressBag、ProgressControls、CGive、VeinMiner、TileHelper、HotReload。
+
+### ProgressControls 的归属（2026-10-12 源码排重）
+
+- **TShock 侧已合并进 FixTools**：原独立插件 `ProgressControls`（显示名「计划书」）已作为
+  内部模块并入 `tshock/FixTools/`，实现位于 **`tshock/FixTools/ProgressControl/`**
+  （`PControl.cs` / `PControl.Initialize.cs` / `PControl.Utils.cs` / `Config.cs` / `I18n.cs`），
+  随 `FixTools.dll` 一起编译与部署。因此**不再收录** `tshock/ProgressControls/`
+  —— 该目录已删除（其内容与本仓库 `tsl/ProgressControls/source/` 逐字节相同，是历史副本）。
+- **TSL 侧仍独立**：`tsl/ProgressControls/source/` 保留（属 15-UTSL 的地盘）；
+  它是 TSL 版 `ProgressControls.dll` 的唯一源码。
+  ⚠ 现状：该 `.csproj` 与 `tsl/` 下其它工程一样写 `<Import Project="..\..\template.targets" />`，
+  但相对 `source/` 只上溯到 `tsl/`，**找不到仓库根的 `template.targets`**，`dotnet build` 会报
+  `NETSDK1013`。需要 15-UTSL 侧确认是改 Import 深度（`..\..\..\`）还是另有构建入口。
 
 ### PermaBuff 与 Permabuffs 是两支不同的插件
 
