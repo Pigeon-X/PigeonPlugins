@@ -32,7 +32,10 @@ internal class DropBossBags
                 data.BagPos.RemoveAt(0);// 移除最早的元素（索引0）
 
             // 处理死亡玩家复活
-            if (plr.Dead)
+            // 幽灵态（PGameAPI「BOSS 死亡幽灵模式」）交由该模块自行释放：它在 OnGameUpdate 里
+            // 只要记录还在、发现 !TPlayer.ghost 就会再次压回幽灵，与这里的强制复活对撞成"横跳"。
+            // 幽灵模式未开启时 TPlayer.ghost 恒为 false，行为与改动前逐字一致（零风险）。
+            if (plr.Dead && !plr.TPlayer.ghost)
             {
                 plr.RespawnTimer = 0; // 立即复活
                 plr.Spawn(PlayerSpawnContext.ReviveFromDeath); // 触发复活
