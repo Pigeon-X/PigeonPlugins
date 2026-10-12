@@ -44,20 +44,23 @@ out\Release\
 
 TShock：AntiCheatingTool、FixTools、TileHelper、CGive、HelpPlus、PlayerReward、CommandTool、PlaceholderAPI、Chameleon、MapTp、TeleportRequest、VeinMiner、ProgressBag、PlayerSpeed、RandomFishingLoot、RandRespawn、PersonalPermission、PerPlayerLoot、SwitchCommands、VotePlus、LazyAPI、PermaBuff、Permabuffs、PeaceMode。
 
-TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool、FixTools、145修复小公举、MapTp、TeleportRequest、ProgressBag、ProgressControls、CGive、VeinMiner、TileHelper、HotReload。
+TSL：LazyAPI、Chrome.Title、PlaceholderAPI、CommandTool、AntiCheatingTool、FixTools、145修复小公举、MapTp、TeleportRequest、ProgressBag、CGive、VeinMiner、TileHelper、HotReload。
 
 ### ProgressControls 的归属（2026-10-12 源码排重）
 
-- **TShock 侧已合并进 FixTools**：原独立插件 `ProgressControls`（显示名「计划书」）已作为
-  内部模块并入 `tshock/FixTools/`，实现位于 **`tshock/FixTools/ProgressControl/`**
-  （`PControl.cs` / `PControl.Initialize.cs` / `PControl.Utils.cs` / `Config.cs` / `I18n.cs`），
-  随 `FixTools.dll` 一起编译与部署。因此**不再收录** `tshock/ProgressControls/`
-  —— 该目录已删除（其内容与本仓库 `tsl/ProgressControls/source/` 逐字节相同，是历史副本）。
-- **TSL 侧仍独立**：`tsl/ProgressControls/source/` 保留（属 15-UTSL 的地盘）；
-  它是 TSL 版 `ProgressControls.dll` 的唯一源码。
-  ⚠ 现状：该 `.csproj` 与 `tsl/` 下其它工程一样写 `<Import Project="..\..\template.targets" />`，
-  但相对 `source/` 只上溯到 `tsl/`，**找不到仓库根的 `template.targets`**，`dotnet build` 会报
-  `NETSDK1013`。需要 15-UTSL 侧确认是改 Import 深度（`..\..\..\`）还是另有构建入口。
+**本仓库现在只有一份 ProgressControls 实现**：`tshock/FixTools/ProgressControl/`
+（`PControl.cs` / `PControl.Initialize.cs` / `PControl.Utils.cs` / `Config.cs` / `I18n.cs`）。
+
+- 原独立插件 `ProgressControls`（显示名「计划书」）已作为**内部模块并入 FixTools**，
+  随 `FixTools.dll` 一起编译与部署；线上四服**没有**独立的 `ProgressControls.dll`。
+- `tshock/ProgressControls/` 与 `tsl/ProgressControls/source/` 是**同一份旧实现的历史副本**
+  （两份之间 5/5 文件逐字节相同），**均已删除**（提交 `435870a` + 本次）。
+- 删除依据：总策划 2026-10-12 派单「源码只保留一份权威实现；`tsl` 那份不用单独保留」。
+- ⚠ 顺带记录：`tsl/` 下其它工程（CGive / Chrome.Title / CommandTool / LazyAPI / MapTp /
+  PlaceholderAPI / ProgressBag / StatusTextManager / TeleportRequest / VeinMiner）的
+  `<Import Project="..\..\template.targets" />` 从 `source/` 出发只上溯到 `tsl/`，
+  找不到仓库根的 `template.targets`，`dotnet build` 会报 **NETSDK1013**；
+  需要 15-UTSL 侧确认改 Import 深度（`..\..\..\`）还是另有构建入口。（本仓库未改。）
 
 ### PermaBuff 与 Permabuffs 是两支不同的插件
 
