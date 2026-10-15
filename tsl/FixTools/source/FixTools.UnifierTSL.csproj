@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>FixTools</AssemblyName>
+    <RootNamespace>FixTools</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);CS0162;CS0219;CS0618;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8625;CS8632;CS0168;CS1998</NoWarn>
+    <UtBase>C:\Users\59934\Saved Games\流光核心源码\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64</UtBase>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Include="TerrariaApi.Server" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="TShockAPI"><HintPath>$(UtBase)\plugins\TShockAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnifierTSL"><HintPath>$(UtBase)\lib\UnifierTSL.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI"><HintPath>$(UtBase)\lib\OTAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI.Runtime"><HintPath>$(UtBase)\lib\OTAPI.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(UtBase)\lib\Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ModFramework"><HintPath>$(UtBase)\lib\ModFramework.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="GetText"><HintPath>$(UtBase)\lib\GetText.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Microsoft.Data.Sqlite"><HintPath>$(UtBase)\lib\Microsoft.Data.Sqlite.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
