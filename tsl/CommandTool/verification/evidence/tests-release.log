@@ -1,0 +1,104 @@
+﻿E:\流光核心源码\_git\PigeonPlugins\tsl\CommandTool\tests\SilenceChecks.cs(71,31): warning CS8602: 解引用可能出现空引用。 [E:\流光核心源码\_git\PigeonPlugins\tsl\CommandTool\tests\CommandTool.Tests.csproj]
+PASS 旧中英文配置迁移完整断言组
+PASS 默认快照版本2
+PASS 未知版本拒绝
+PASS 轮询下界拒绝
+PASS 负冷却拒绝
+PASS 启用绑定必须明确世界
+PASS 无世界暂存绑定可保持禁用
+PASS 跨类型重复ID拒绝
+PASS 同世界同实体重复绑定拒绝
+PASS 区域范围倒置拒绝
+PASS 区域负停留拒绝
+PASS 管理入口不可递归绑定
+PASS 跨行指令拒绝
+PASS 未知动作类型拒绝
+PASS 快照动作深拷贝不改变当前配置
+PASS 提权与临时权限显式保留
+PASS 引号参数不被拆成多个指令
+PASS 静默点前缀兼容
+PASS 引号转义往返
+PASS 未闭合引号拒绝
+PASS 空和NUL拒绝
+PASS 所有管理入口只精确匹配根
+PASS 多格实体包含四格而不扩大范围
+PASS 区域边界包含端点
+PASS 非有限坐标不在区域
+PASS 进入不提前执行
+PASS 停留到期执行一次
+PASS 持续站在原区不重复
+PASS 离开后重新进入先重计时
+PASS 离区取消旧倒计时
+PASS 零停留即时执行
+PASS 个人冷却和锁存有效
+PASS 重叠区域只执行最高优先级
+PASS 同优先级按ID稳定选择
+PASS 跨图到达目标区域被抑制
+PASS 抑制结束后离区再进才触发
+PASS 死亡或重载重置等待与锁存
+PASS 干燥完整地面可找到目标脚底行
+PASS 落点身体保持完整高度
+PASS 有水的所有候选被拒绝
+PASS 危险缓冲中的候选被拒绝
+PASS 没有承重地面不传送
+PASS 非法玩家尺寸拒绝
+PASS 目标越界拒绝
+PASS 身体碰撞拒绝
+PASS 真实TSPlayer普通消息未被全局吞掉
+PASS 标准TSPlayer成功错误和四类ChatHelper出口静默
+PASS 离开调用范围后普通聊天恢复
+PASS 并发独立上下文的正常消息不受影响
+PASS 真实Legacy固定指令只执行一次
+PASS 本次执行权限确实有效
+PASS 名字占位按参数替换而非注入文本
+PASS Legacy内部成功错误广播无聊天
+PASS 同一连接迟发普通逻辑可用但额外权限已撤回
+PASS 继承上下文的返回后异步消息仍静默
+PASS 执行不改真实用户组和tempGroup
+PASS 普通权限不足时不执行且无聊天
+PASS 同名Legacy重复注册仍只执行一个处理器
+PASS 迟发动态getter拒绝复用槽位的新玩家
+[91;40m[Error][96;40m[TShock][91;40m System.InvalidOperationException: fixture intentional
+ │      at SilenceChecks.<>c__DisplayClass4_1.<Run>b__11(CommandArgs args) in E:\流光核心源码\_git\PigeonPlugins\tsl\CommandTool\tests\SilenceChecks.cs:line 106
+ └──    at TShockAPI.Command.Run(CommandArgs args)
+[0mPASS 执行后抛错不走另一路重放且错误静默
+PASS 真实TShockV2 home成功结果不输出
+PASS 真实TShockV2 warp成功结果不输出
+PASS 真实TShockV2 warp错误也不输出
+PASS 真实TShockV2 home死亡错误也不输出
+PASS 卸载后没有遗留全局聊天拦截
+PASS 捕获真实TS玩家Socket及来源地图
+PASS 真实单格开关实体归一化
+PASS 真实2x2拉杆任意格同一锚点
+PASS 虚化拉杆不可执行但保护仍识别
+PASS 指令拉杆四格受保护且回发图格
+PASS 未绑定普通开关不被保护
+PASS 倒重力不能绕过绑定开关保护
+PASS 有明确编辑权限的玩家可编辑绑定实体
+PASS 旧文字快照为空的真实标牌仍可点击执行
+PASS 点击后的确认包不重复执行
+PASS 伪造普通坐标不能用绑定SignSlot改字
+PASS 绑定标牌坐标必须与索引一致
+PASS 绑定标牌改字被拒绝并回发原实体
+PASS 非绑定标牌保持原版处理
+PASS 真实图格安全落点搜索可用
+PASS 真实液体存在时不选原水下位置
+PASS 同上下文同尺寸更换地图使旧actor失效
+PASS 复用槽位换Socket不匹配旧actor
+PASS 目标尚未确认到达时拒绝远处移动包
+PASS 合法安全坐标移动包确认到达
+[93;40m[+Warn][96;40m[UnifierApi][93;40m [CommandTool] 到达确认前收到非切图Spawn请求；只关闭票据捕获的原连接。
+[0mPASS 非法Spawn不能提前解除未到达保护
+PASS 合法切图Spawn注册处理后回调
+PASS 被取消的Spawn不推进落点状态
+PASS 新Socket不受旧票据移动限制
+[93;40m[+Warn][96;40m[UnifierApi][93;40m [CommandTool] 卸载时仍在切图；只关闭票据捕获的原连接。
+[0mPASS 卸载只关闭捕获旧Socket而不踢新连接
+PASS 统一配置创建后严格读取
+PASS 原子替换保留上个版本备份
+PASS 坏配置保存必须拒绝
+PASS 坏配置不会覆盖有效文件
+PASS 统一路径拒绝旧JSON模式误载
+PASS 统一配置拒绝重复属性
+TOTAL 96 / PASS 96 / FAIL 0
+测试临时配置与备份：C:\Users\59934\AppData\Local\Temp\CommandTool.Tests-782c3bfab75f4810a393c5ced8fd0cd8

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>CommandTool</AssemblyName>
+    <RootNamespace>CommandTool</RootNamespace>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Version>2.5.0</Version>
+    <OutputPath>out\</OutputPath>
+    <UtBase Condition="'$(UtBase)' == ''">$(MSBuildProjectDirectory)\..\..\..\..\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64</UtBase>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="native\*.cs" />
+    <InternalsVisibleTo Include="CommandTool.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="TShockAPI"><HintPath>$(UtBase)\plugins\TShockAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnifierTSL"><HintPath>$(UtBase)\lib\UnifierTSL.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI"><HintPath>$(UtBase)\lib\OTAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI.Runtime"><HintPath>$(UtBase)\lib\OTAPI.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(UtBase)\lib\Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="MonoMod.RuntimeDetour"><HintPath>$(UtBase)\lib\MonoMod.RuntimeDetour.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="MonoMod.Utils"><HintPath>$(UtBase)\lib\MonoMod.Utils.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,9 @@
+bin/
+obj/
+out/
+tests/bin/
+tests/obj/
+tests/*.log
+verification/loader/artifacts/
+verification/**/bin/
+verification/**/obj/

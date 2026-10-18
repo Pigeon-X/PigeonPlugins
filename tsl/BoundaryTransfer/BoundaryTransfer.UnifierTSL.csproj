@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>BoundaryTransfer</AssemblyName>
+    <RootNamespace>BoundaryTransfer</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Version>1.2.0</Version>
+    <UtBase Condition="'$(UtBase)' == ''">$(MSBuildProjectDirectory)\..\..\..\..\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64</UtBase>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="source\*.cs" />
+    <InternalsVisibleTo Include="BoundaryTransfer.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="TShockAPI"><HintPath>$(UtBase)\plugins\TShockAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnifierTSL"><HintPath>$(UtBase)\lib\UnifierTSL.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI"><HintPath>$(UtBase)\lib\OTAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI.Runtime"><HintPath>$(UtBase)\lib\OTAPI.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(UtBase)\lib\Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

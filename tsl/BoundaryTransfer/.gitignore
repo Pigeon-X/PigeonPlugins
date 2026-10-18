@@ -1,0 +1,9 @@
+bin/
+obj/
+tests/bin/
+tests/obj/
+tests/*.log
+tests/exitcode.txt
+tests/initial-*.txt
+verification/*/bin/
+verification/*/obj/

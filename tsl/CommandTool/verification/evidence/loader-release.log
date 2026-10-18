@@ -1,0 +1,23 @@
+﻿[97;40m[+Info][96;40m[UnifierApi][97;40m [CommandTool] 2.0.0原生合并版已加载；管理指令隐藏，自动动作固定静默。配置：config\CommandTool\CommandTool.v2.json
+[0m[92;40m[Succe][96;40m[UTSL-PluginHost][92;40m Plugin 'CommandTool' v2.0.0 (by Pigeon-X) initialized.
+[0m[97;40m[+Info][96;40m[UTSL-PluginHost][97;40m All plugins (1) have been initialized.
+[0mPASS 官方原生宿主发现合并插件
+PASS 初始化及全部Hook绑定成功
+PASS 插件版本2.0.0
+PASS 直接继承BasePlugin而非旧兼容壳
+PASS 原生配置注册自动生成统一文件
+PASS 中文版本化配置包含三个绑定列表
+PASS 旧CommandTool配置没有被覆盖
+PASS 没有自动把无世界旧绑定投入使用
+PASS 所有管理别名均未注册到公共目录
+PASS 真实文件监视器应用有效配置
+[93;40m[+Warn][96;40m[UnifierApi][93;40m [CommandTool] 无效重载保留旧配置：区域检测间隔必须在50～1000之间。
+[0mPASS 非法数值热重载保留上次有效配置
+[93;40m[+Warn][96;40m[UnifierApi][93;40m [CommandTool] 无效重载保留旧配置：统一配置必须显式包含 配置版本:2；旧版请使用迁移入口，不会自动重写旧文件。
+[0mPASS 旧schema误放统一路径拒绝重载
+PASS 修复文件后监视器继续工作
+[97;40m[+Info][96;40m[UTSL-PluginHost|Shutdown][97;40m Plugin 'CommandTool' shutdown completed.
+[0m[94;40m[Debug][96;40m[ModuleLoader][94;40m Unloading module E:\流光核心源码\_git\PigeonPlugins\tsl\CommandTool\verification\loader\artifacts\release\plugins\CommandTool\CommandTool.dll
+[0m[97;40m[+Info][96;40m[UTSL-PluginHost|Unloading][97;40m Plugin 'CommandTool' unload completed.
+[0mPASS 插件关闭与卸载成功
+RESULT PASS=14 FAIL=0
