@@ -14,7 +14,7 @@ using UnifierTSL.Servers;
 
 namespace CommandTool;
 
-[PluginMetadata("CommandTool","2.5.0","Pigeon-X","UTSL原生开关/标牌/区域指令工具：点1/点2单格选角、占位1/占位2玩家占位框、区域外扩5格不可破坏；不处理传送/落点；隐藏入口不含ct。")]
+[PluginMetadata("CommandTool","2.5.1","Pigeon-X","UTSL原生开关/标牌/区域指令工具：点1/点2单格选角、占位1/占位2玩家占位框、区域外扩5格不可破坏；不处理传送/落点；隐藏入口不含ct；配置只手动重载。")]
 public sealed partial class CommandToolPlugin:BasePlugin
 {
     private const int MovedByCommandSuppressMs = 3000;
@@ -36,9 +36,10 @@ public sealed partial class CommandToolPlugin:BasePlugin
         }
         _handle=registrar.CreateConfigRegistration<ToolConfig>("CommandTool.v2.json",ConfigFormat.NewtonsoftJson)
             .WithDefault(static()=>new()).OnDeserializationFailure(DeserializationFailureHandling.ReturnNewInstance,false)
-            .TriggerReloadOnExternalChange(true).Complete();
+            // 外部改文件不自动重读；只有 /工具 重载 或 /reload 才重新加载。
+            .TriggerReloadOnExternalChange(false).Complete();
         await _handle.RequestAsync(cancellationToken:cancellationToken).ConfigureAwait(false);
-        Apply(ToolConfigStore.Read(_handle.FilePath));_handle.OnChangedAsync+=Changed;
+        Apply(ToolConfigStore.Read(_handle.FilePath));
         _runner.Bind();BindProtection();_running=true;
         NetPacketHandler.Register<HitSwitch>(OnSwitch,HandlerPriority.Highest);
         NetPacketHandler.Register<RequestReadSign>(OnSignClick,HandlerPriority.Highest);
@@ -47,17 +48,22 @@ public sealed partial class CommandToolPlugin:BasePlugin
         UnifierApi.EventHub.Chat.MessageEvent.Register(OnHidden,HandlerPriority.Highest);
         UnifierApi.EventHub.Game.PostUpdate.Register(OnUpdate,HandlerPriority.Lowest);
         GeneralHooks.ReloadEvent+=OnReload;
-        UnifierApi.Logger.Info("[CommandTool] 2.5.0指令版已加载；点1/点2单格、占位1/占位2玩家占位框，区域及外扩保护，不处理传送/落点。配置："+_handle.FilePath);
+        UnifierApi.Logger.Info("[CommandTool] 2.5.1指令版已加载；点1/点2单格、占位1/占位2玩家占位框，区域及外扩保护，不处理传送/落点。配置："+_handle.FilePath);
     }
-    private ValueTask<bool> Changed(IPluginConfigHandle<ToolConfig> handle,ToolConfig? value)
-    {try{Reload();}catch(Exception e){UnifierApi.Logger.Warning("[CommandTool] 无效重载保留旧配置："+e.Message);}return ValueTask.FromResult(false);}
     private void Reload()
     {
         lock(_gate)
         {
             if(_handle is null)return;
-            var next=ToolConfigStore.Read(_handle.FilePath);
-            _handle.ModifyInMemory(_=>next);Apply(next);
+            try
+            {
+                var next=ToolConfigStore.Read(_handle.FilePath);
+                _handle.ModifyInMemory(_=>next);Apply(next);
+            }
+            catch(Exception e)
+            {
+                UnifierApi.Logger.Warning("[CommandTool] 无效配置保留旧版本："+e.Message);
+            }
         }
     }
     private void OnReload(ReloadEventArgs args){try{Reload();}catch(Exception e){UnifierApi.Logger.Warning("[CommandTool] 重载失败："+e.Message);}}
@@ -84,7 +90,6 @@ public sealed partial class CommandToolPlugin:BasePlugin
         UnifierApi.EventHub.Chat.MessageEvent.UnRegister(OnHidden);UnifierApi.EventHub.Game.PostUpdate.UnRegister(OnUpdate);
         GeneralHooks.ReloadEvent-=OnReload;
         UnbindProtection();_runner.Unbind();
-        if(_handle is not null)_handle.OnChangedAsync-=Changed;
         lock(_gate){_players.Clear();_poll.Clear();}_handle=null;return Task.CompletedTask;
     }
     public override async ValueTask DisposeAsync(bool disposing){await ShutdownAsync().ConfigureAwait(false);await base.DisposeAsync(disposing).ConfigureAwait(false);}

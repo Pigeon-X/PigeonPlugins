@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>PeaceMode</AssemblyName>
+    <RootNamespace>PeaceMode</RootNamespace>
+    <Version>1.0.1</Version>
+    <Description>UnifierTSL 和平模式：禁止所有 NPC、召唤和世界事件，并静默相关公告。</Description>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <UtBase Condition="'$(UtBase)' == ''">$(MSBuildProjectDirectory)\..\..\..\..\_参考资料\官方源码\UnifierTSL更新\已完成\0.3.1-tshock6.1-cn\utsl-win-x64</UtBase>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="source\**\*.cs" />
+    <Reference Include="TShockAPI"><HintPath>$(UtBase)\plugins\TShockAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnifierTSL"><HintPath>$(UtBase)\lib\UnifierTSL.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI"><HintPath>$(UtBase)\lib\OTAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI.Runtime"><HintPath>$(UtBase)\lib\OTAPI.Runtime.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <Target Name="CheckUtBase" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(UtBase)\lib\OTAPI.dll')" Text="找不到 UnifierTSL 依赖；请用 -p:UtBase=发行版根目录 指定包含 lib 的目录。" />
+  </Target>
+</Project>

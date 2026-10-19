@@ -1,4 +1,4 @@
-# CommandTool 2.5.0 · 仅 UTSL 原生指令版
+# CommandTool 2.5.1 · 仅 UTSL 原生指令版
 
 适配基线：UnifierTSL 0.3.1 / TShock 6.1 / Terraria 1.4.5.8，目标 .NET 9。不是普通 TShock 插件，不加载旧兼容壳。
 
@@ -22,6 +22,7 @@
 3. 安装包的 `plugins/CommandTool.dll` 放入 UTSL 的对应插件目录。不要复制参考发行版的核心依赖覆盖服务器。
 4. 新配置自动注册于 `config/CommandTool/CommandTool.v2.json`。初始为空，不自动导入旧文件、不保护普通实体。
 5. 新版必须显式包含 `"配置版本": 2`。坏 JSON、重复属性、旧模式误放新路径或不合法数值，不会自动覆盖原文件；有效运行配置保留。
+6. 外部修改 `CommandTool.v2.json` 不会自动生效；执行 `/工具 重载` 或 TShock `/reload` 才重新读取。
 
 管理保存用同目录临时文件写入并刷新后原子替换；每次替换保存一个时间戳 `.bak`。失败时不先截断有效文件，残留 `.tmp` 可供人工恢复。备份不自动删除。
 

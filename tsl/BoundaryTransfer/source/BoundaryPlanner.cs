@@ -87,6 +87,66 @@ internal static class BoundaryPlanner
         return new(false, default, checkedCount, "目标海岸找不到干燥、无障碍的地表落点，本次不切换。");
     }
 
+    /// <summary>
+    /// 拼接地图接缝落点：按切片间距/对侧陆地边缘计算目标 X，并按两侧地表高度差保持玩家离地高度。
+    /// 只在目标列向上微调最多8格，不向内搜索、不找洞穴。
+    /// </summary>
+    public static LandingResult Seam(ILandingMap source, ILandingMap target, BoundarySide exitSide,
+        int sourceTileX, int sourceFeetY, int playerWidth, int playerHeight,
+        int targetEdge, int sliceDelta, int margin, bool allowNudge,
+        int sourceSurfaceY, int sourceRockLayerY, int targetSurfaceY, int targetRockLayerY, int surfaceBand)
+    {
+        if (playerWidth is < 1 or > 128 || playerHeight is < 1 or > 256
+            || surfaceBand is < 0 or > 200 || targetRockLayerY <= 43)
+            return new(false, default, 0, "接缝搜索参数无效。");
+        int widthTiles = Math.Max(1, (playerWidth + 15) / 16);
+        int destTile;
+        if (sliceDelta > 0)
+            destTile = exitSide == BoundarySide.Right ? sourceTileX - sliceDelta : sourceTileX + sliceDelta;
+        else
+            destTile = exitSide == BoundarySide.Right ? targetEdge + margin : targetEdge - margin - widthTiles;
+        destTile = Math.Clamp(destTile, 43, target.Width - 44);
+        int sourceMin = Math.Max(43, sourceSurfaceY - surfaceBand);
+        int sourceMax = Math.Min(Math.Min(sourceRockLayerY - 1, source.Height - 44), sourceSurfaceY + surfaceBand);
+        int targetMin = Math.Max(43, targetSurfaceY - surfaceBand);
+        int targetMax = Math.Min(Math.Min(targetRockLayerY - 1, target.Height - 44), targetSurfaceY + surfaceBand);
+        if (sourceMin > sourceMax || targetMin > targetMax)
+            return new(false, default, 0, "接缝地表范围无效。");
+        int sourceGround = FindGroundY(source, sourceTileX, sourceFeetY, sourceMin, sourceMax);
+        int targetGround = FindGroundY(target, destTile, sourceFeetY, targetMin, targetMax);
+        if (sourceGround <= 0 || targetGround <= 0)
+            return new(false, default, 0, "接缝源列或目标列不是可站立地表。");
+        int seamFeet = targetGround - (sourceGround - sourceFeetY);
+        seamFeet = Math.Clamp(seamFeet, targetMin, targetMax);
+        for (int nudge = 0; nudge <= (allowNudge ? 8 : 0); nudge++)
+        {
+            int feet = seamFeet - nudge;
+            if (feet < targetMin || feet > targetMax) break;
+            var spot = new LandingSpot(destTile * 16f + 8 - playerWidth / 2f,
+                feet * 16f - playerHeight, feet);
+            if (IsSafe(target, spot, playerWidth, playerHeight, 1))
+                return new(true, spot, nudge, "");
+        }
+        return new(false, default, 9, "接缝目标列找不到可站立位置。");
+    }
+
+    private static int FindGroundY(ILandingMap map, int x, int hintFeet, int minY, int maxY)
+    {
+        if (x < 2 || x >= map.Width - 3 || minY > maxY) return -1;
+        int best = -1, bestDist = int.MaxValue;
+        for (int y = minY; y <= maxY; y++)
+        {
+            TileCell body = map.Get(x, y);
+            TileCell floor = map.Get(x, y + 1);
+            if (body.BlocksBody || body.Liquid || body.Hazardous) continue;
+            if (!floor.SupportsFeet || floor.Liquid || floor.Hazardous) continue;
+            int dist = Math.Abs(y - hintFeet);
+            if (dist < bestDist) { bestDist = dist; best = y; }
+            if (dist <= 2) return y;
+        }
+        return best;
+    }
+
     public static string? Neighbor(BoundarySettings settings, string source, BoundarySide side)
     {
         int index = Array.FindIndex(settings.Worlds, n => n.Equals(source, StringComparison.OrdinalIgnoreCase));

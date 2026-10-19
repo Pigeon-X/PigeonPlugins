@@ -15,11 +15,12 @@ using UnifierTSL.Servers;
 
 namespace BoundaryTransfer;
 
-[PluginMetadata("BoundaryTransfer", "1.2.0", "Pigeon-X", "碰边向外原生跨图，保持接触高度直达对侧边界，无传送特效；海边保护只沿地表海岸修正，不进水/地底/地狱，不改出生点。")]
+[PluginMetadata("BoundaryTransfer", "1.4.1", "Pigeon-X", "碰边向外原生跨图；独立世界同高度直达+海边保护，切片地图接缝支持个人/世界出生点落点与降级链；各策略独立开关；配置只手动重载。")]
 public sealed partial class BoundaryTransferPlugin : BasePlugin
 {
     private const string AdminPermission = "boundarytransfer.admin";
     private readonly object _gate = new();
+    private static readonly object SpawnGate = new();
     private readonly Dictionary<int, PlayerSession> _sessions = [];
     private readonly Dictionary<ServerContext, long> _nextPoll = [];
     private volatile BoundarySettings _settings = BoundarySettings.Default;
@@ -40,8 +41,8 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
         _config = configRegistrar.CreateConfigRegistration<BoundaryTransferConfig>("BoundaryTransfer.json", ConfigFormat.NewtonsoftJson)
             .WithDefault(static () => new())
             .OnDeserializationFailure(DeserializationFailureHandling.ReturnNewInstance, false)
-            .TriggerReloadOnExternalChange(true).Complete();
-        _config.OnChangedAsync += OnConfigChanged;
+            // 外部改文件不自动重读；只有 /边界 重载 才重新加载，避免编辑中途被半成品配置打断。
+            .TriggerReloadOnExternalChange(false).Complete();
         ApplyConfig(await _config.RequestAsync(cancellationToken: cancellationToken).ConfigureAwait(false) ?? new());
         _command = new Command(AdminPermission, OnCommand, "边界", "boundarytransfer", "borders")
         {
@@ -97,8 +98,6 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
         NetPacketHandler.UnRegister<SpawnPlayer>(OnSpawnPacket);
         NetPacketHandler.UnRegister<PlayerControls>(OnControlsPacket);
         _command = null;
-        if (_config is not null)
-            _config.OnChangedAsync -= OnConfigChanged;
         _config = null;
         lock (_gate) { _sessions.Clear(); _nextPoll.Clear(); }
     }
@@ -107,12 +106,6 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
     {
         await ShutdownAsync().ConfigureAwait(false);
         await base.DisposeAsync(isDisposing).ConfigureAwait(false);
-    }
-
-    private ValueTask<bool> OnConfigChanged(IPluginConfigHandle<BoundaryTransferConfig> handle, BoundaryTransferConfig? config)
-    {
-        ApplyConfig(config ?? new());
-        return ValueTask.FromResult(false);
     }
 
     internal bool ApplyConfig(BoundaryTransferConfig config)
@@ -169,8 +162,7 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
                 }
                 if (now < session.NextAllowed) continue;
             }
-            var side = BoundaryContact.Side(player.position.X, player.width,
-                server.Main.leftWorld, server.Main.rightWorld, settings.ContactTolerance);
+            var side = ExitSide(player, server, settings);
             if (side is null || !BoundaryContact.IsOutward(side.Value, player.velocity.X,
                     player.controlLeft, player.controlRight)) continue;
             if (player.gravDir != 1f)
@@ -204,6 +196,22 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
         }
     }
 
+    private static BoundarySide? ExitSide(Player player, ServerContext server, BoundarySettings settings)
+    {
+        if (!settings.Seam.Enabled)
+            return BoundaryContact.Side(player.position.X, player.width,
+                server.Main.leftWorld, server.Main.rightWorld, settings.ContactTolerance);
+        var edges = settings.Seam.Edges.GetValueOrDefault(server.Name);
+        int westEdge = edges?.West ?? BoundaryContact.NativeEdgePaddingPixels / 16;
+        int eastEdge = edges?.East ?? server.Main.maxTilesX - BoundaryContact.NativeEdgePaddingPixels / 16;
+        int margin = settings.Seam.TriggerMargin;
+        bool east = (double)player.position.X + player.width >= (eastEdge - margin) * 16d;
+        bool west = player.position.X <= (westEdge + margin) * 16d;
+        if (east && (player.controlRight || player.velocity.X > 0.01f)) return BoundarySide.Right;
+        if (west && (player.controlLeft || player.velocity.X < -0.01f)) return BoundarySide.Left;
+        return null;
+    }
+
     private void BeginNativeTransfer(TransferTicket ticket)
     {
         if (!IsCurrent(ticket) || ticket.Routing || Environment.TickCount64 >= ticket.Deadline) return;
@@ -211,28 +219,71 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
             || !TryGetLivePlayer(ticket.Source, ticket.Slot, out var player, out var ts, out var socket)
             || !ticket.Session.Matches(player, ts, socket))
         { Fail(ticket, "切换前玩家或世界已变化，本次不切换。"); return; }
-        if (BoundaryContact.Side(player.position.X, player.width, ticket.Source.Main.leftWorld,
-                ticket.Source.Main.rightWorld, ticket.Settings.ContactTolerance) != ticket.ExitSide
+        if (ExitSide(player, ticket.Source, ticket.Settings) != ticket.ExitSide
             || !BoundaryContact.IsOutward(ticket.ExitSide, player.velocity.X, player.controlLeft, player.controlRight)
             || player.gravDir != 1f)
         { Fail(ticket, "玩家已离开边界，请重新走到边界。"); return; }
-        // 默认保持脚底高度直达对侧边界；只有目标点在海里/无地面时才做海岸保护。
-        var direct = BoundaryPlanner.Direct(ticket.EntrySide, player.Bottom.Y, player.width, player.height,
-            new BoundaryBounds(ticket.Target.Main.leftWorld, ticket.Target.Main.rightWorld,
-                ticket.Target.Main.topWorld, ticket.Target.Main.bottomWorld));
-        if (!direct.Success) { Fail(ticket, direct.Error); return; }
-        var landing = direct;
-        var map = new TerrariaLandingMap(ticket.Target);
-        if (ticket.Settings.CoastGuard && !RuntimeSafe(ticket.Target, map, direct.Spot, player, ticket.Settings.HazardPadding))
+        LandingResult landing;
+        string tier = "边界";
+        var sourceMap = new TerrariaLandingMap(ticket.Source);
+        var targetMap = new TerrariaLandingMap(ticket.Target);
+        if (ticket.Settings.Seam.Enabled)
         {
-            var coast = BoundaryPlanner.Coastal(map, ticket.EntrySide, player.width, player.height,
-                ticket.Settings.CoastSearchX, ticket.Settings.CoastSearchY,
+            var targetEdges = ticket.Settings.Seam.Edges.GetValueOrDefault(ticket.Target.Name);
+            int targetEdge = ticket.ExitSide == BoundarySide.Right
+                ? targetEdges?.West ?? BoundaryContact.NativeEdgePaddingPixels / 16
+                : targetEdges?.East ?? ticket.Target.Main.maxTilesX - BoundaryContact.NativeEdgePaddingPixels / 16;
+            landing = BoundaryPlanner.Seam(sourceMap, targetMap, ticket.ExitSide,
+                (int)(player.position.X / 16f), (int)(player.Bottom.Y / 16f),
+                player.width, player.height, targetEdge,
+                ticket.Settings.Seam.SliceDelta, ticket.Settings.Seam.TriggerMargin,
+                ticket.Settings.Seam.AllowNudge,
+                (int)ticket.Source.Main.worldSurface, (int)ticket.Source.Main.rockLayer,
                 (int)ticket.Target.Main.worldSurface, (int)ticket.Target.Main.rockLayer,
-                ticket.Settings.HazardPadding, ticket.Settings.MaxCandidates);
-            if (!coast.Success) { Fail(ticket, coast.Error); return; }
-            landing = coast;
+                ticket.Settings.Seam.SurfaceBand);
+            tier = "接缝";
+            if (landing.Success)
+            {
+                ticket.PreserveVelocity = true;
+                ticket.EntryVelocity = player.velocity;
+                ticket.SpawnMechanism = ticket.Settings.Seam.SpawnMechanism;
+                // 专用服务器 Main.myPlayer=255，正常玩家不会命中客户端分支；
+                // 若未来在主机/本机玩家槽位运行，个人出生点会被 CheckSpawn 清掉，直接退回 Teleport。
+                if (ticket.SpawnMechanism == "个人" && player.whoAmI == Main.myPlayer)
+                    ticket.SpawnMechanism = "关闭";
+            }
+            else if (!ticket.Settings.Seam.AllowFallback)
+            { Fail(ticket, landing.Error); return; }
+        }
+        else
+            landing = new(false, default, 0, "");
+
+        if (!landing.Success)
+        {
+            tier = "边界";
+            landing = BoundaryPlanner.Direct(ticket.EntrySide, player.Bottom.Y, player.width, player.height,
+                new BoundaryBounds(ticket.Target.Main.leftWorld, ticket.Target.Main.rightWorld,
+                    ticket.Target.Main.topWorld, ticket.Target.Main.bottomWorld));
+            if (landing.Success && ticket.Settings.BoundarySameHeight)
+            {
+                if (!RuntimeSafe(ticket.Target, targetMap, landing.Spot, player, ticket.Settings.HazardPadding))
+                    landing = new(false, default, 0, "");
+            }
+            else if (!ticket.Settings.BoundarySameHeight)
+                landing = new(false, default, 0, "");
+
+            if (!landing.Success && ticket.Settings.CoastGuard)
+            {
+                tier = "海边";
+                landing = BoundaryPlanner.Coastal(targetMap, ticket.EntrySide, player.width, player.height,
+                    ticket.Settings.CoastSearchX, ticket.Settings.CoastSearchY,
+                    (int)ticket.Target.Main.worldSurface, (int)ticket.Target.Main.rockLayer,
+                    ticket.Settings.HazardPadding, ticket.Settings.MaxCandidates);
+            }
+            if (!landing.Success) { Fail(ticket, "所有落点策略均失败，本次不切换。"); return; }
         }
         ticket.Spot = landing.Spot;
+        ticket.LandingTier = tier;
         var client = UnifiedServerCoordinator.globalClients[ticket.Slot];
         if (!ticket.Target.CheckPlayerCanJoinIn(player, client, out var reason))
         { Fail(ticket, "相邻世界拒绝进入：" + reason?.ToString()); return; }
@@ -244,9 +295,33 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
             ticket.Deadline = Environment.TickCount64 + ticket.Settings.TimeoutMs;
             ticket.Routing = true;
         }
+        bool redirectSpawn = ticket.SpawnMechanism is "个人" or "世界";
+        int oldSpawnX = player.SpawnX, oldSpawnY = player.SpawnY;
+        int oldWorldSpawnX = 0, oldWorldSpawnY = 0;
+        bool worldSpawnLocked = false;
         try
         {
-            // 唯一的跨服入口：不改世界spawnTile、不设置玩家SpawnX/Y、不调用Spawn伪造落点。
+            if (redirectSpawn)
+            {
+                int seamTileX = (int)MathF.Floor((ticket.Spot.X + player.width / 2f) / 16f);
+                int seamTileY = ticket.Spot.FeetY;
+                if (ticket.SpawnMechanism == "世界")
+                {
+                    Monitor.Enter(SpawnGate);
+                    worldSpawnLocked = true;
+                    oldWorldSpawnX = ticket.Target.Main.spawnTileX;
+                    oldWorldSpawnY = ticket.Target.Main.spawnTileY;
+                    ticket.Target.Main.spawnTileX = seamTileX;
+                    ticket.Target.Main.spawnTileY = seamTileY;
+                    player.SpawnX = -1;
+                    player.SpawnY = -1;
+                }
+                else
+                {
+                    player.SpawnX = seamTileX;
+                    player.SpawnY = seamTileY;
+                }
+            }
             UnifiedServerCoordinator.TransferPlayerToServer((byte)ticket.Slot, ticket.Target);
             if (UnifiedServerCoordinator.GetClientCurrentlyServer(ticket.Slot) != ticket.Target)
             { Fail(ticket, "原生切换未完成（可能被其他插件取消），仍留在原世界。"); return; }
@@ -258,6 +333,20 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
             if (UnifiedServerCoordinator.GetClientCurrentlyServer(ticket.Slot) == ticket.Target)
             { ticket.NativeComplete = true; ticket.NeedsLanding = true; }
             else Fail(ticket, "原生切换失败：" + ex.Message);
+        }
+        finally
+        {
+            if (redirectSpawn)
+            {
+                player.SpawnX = oldSpawnX;
+                player.SpawnY = oldSpawnY;
+                if (worldSpawnLocked)
+                {
+                    ticket.Target.Main.spawnTileX = oldWorldSpawnX;
+                    ticket.Target.Main.spawnTileY = oldWorldSpawnY;
+                    Monitor.Exit(SpawnGate);
+                }
+            }
         }
     }
 
@@ -308,6 +397,7 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
             if (!ticket.Session.Player.active) continue;
             if (ticket.NeedsLanding)
             {
+                if (now < ticket.NextLandingAt) continue;
                 ticket.NeedsLanding = false;
                 try { Land(ticket, now); }
                 catch (Exception ex) { AbortUnconfirmed(ticket, "无特效落点同步异常：" + ex.Message); }
@@ -331,24 +421,51 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
         { AbortUnconfirmed(ticket, "落地前目标地图已更换"); return; }
         var player = ticket.Session.Player;
         if (player.dead || player.ghost) { End(ticket, now); return; }
+        if (ticket.SpawnMechanism != "关闭" && SpawnLandedOnSpot(ticket, player))
+        {
+            player.velocity = ticket.PreserveVelocity ? ticket.EntryVelocity : Vector2.Zero;
+            CompleteLanding(ticket, now);
+            return;
+        }
         var map = new TerrariaLandingMap(ticket.ActiveTarget);
         if (!RuntimeSafe(ticket.ActiveTarget, map, ticket.Spot, player, ticket.Settings.HazardPadding))
-        { AbortUnconfirmed(ticket, "海边/边界落点在切图后失效"); return; }
-        if (!TeleportSilent(ticket, ticket.Spot))
-        { AbortUnconfirmed(ticket, "无特效落点同步失败"); return; }
-        ticket.LastTeleport = now;
-        if (!ticket.Landed)
         {
-            ticket.GuardUntil = Math.Min(ticket.Deadline, now + ticket.Settings.GuardMs);
-            ticket.Landed = true;
-            lock (_gate)
+            // 切图后区块可能尚未加载，不能把“未知图格”当成最终危险直接踢人。
+            if (ticket.LandingAttempts++ < 5)
             {
-                ticket.Session.Armed = false;
-                ticket.Session.NextAllowed = now + ticket.Settings.CooldownMs;
+                ticket.NeedsLanding = true;
+                ticket.NextLandingAt = now + 200;
+                UnifierApi.Logger.Warning($"[BoundaryTransfer] {player.name}: 目标落点后置校验暂时未通过，等待区块加载后重试（{ticket.LandingAttempts}/5）。");
+                return;
             }
-            // 自动成功不发玩家聊天提示；保留服务端诊断日志。
-            UnifierApi.Logger.Info($"[BoundaryTransfer] {player.name}: 边界直达 {ticket.ActiveTarget.Name}，脚底坐标 ({(int)(player.Center.X / 16)}, {ticket.Spot.FeetY})，保持接触高度。");
+            UnifierApi.Logger.Warning($"[BoundaryTransfer] {player.name}: 目标落点后置校验仍失败，按预检坐标落地，避免断开连接。");
         }
+        if (!TeleportSilent(ticket, ticket.Spot, ticket.PreserveVelocity ? ticket.EntryVelocity : null))
+        { AbortUnconfirmed(ticket, "无特效落点同步失败"); return; }
+        CompleteLanding(ticket, now);
+    }
+
+    private void CompleteLanding(TransferTicket ticket, long now)
+    {
+        ticket.LastTeleport = now;
+        if (ticket.Landed) return;
+        ticket.GuardUntil = Math.Min(ticket.Deadline, now + ticket.Settings.GuardMs);
+        ticket.Landed = true;
+        lock (_gate)
+        {
+            ticket.Session.Armed = false;
+            ticket.Session.NextAllowed = now + ticket.Settings.CooldownMs;
+        }
+        var player = ticket.Session.Player;
+        UnifierApi.Logger.Info($"[BoundaryTransfer] {player.name}: {ticket.LandingTier}落地 {ticket.ActiveTarget.Name}，脚底坐标 ({(int)(player.Center.X / 16)}, {ticket.Spot.FeetY})，机制={ticket.SpawnMechanism}。");
+    }
+
+    private static bool SpawnLandedOnSpot(TransferTicket ticket, Player player)
+    {
+        float targetX = ticket.Spot.X + player.width / 2f;
+        float targetY = ticket.Spot.FeetY * 16f;
+        return Math.Abs(player.Center.X - targetX) <= 48f
+            && Math.Abs(player.Bottom.Y - targetY) <= 64f;
     }
 
     private static bool RuntimeSafe(ServerContext server, ILandingMap map, LandingSpot spot, Player player, int padding)
@@ -364,14 +481,14 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
     /// 不走 TShock Teleport 的 style=1 特效；直接设置原生位置并用手工 65 号包同步客户端。
     /// 不使用世界出生点、不改变 SpawnX/SpawnY，也不做任何地形安全搜索。
     /// </summary>
-    private static bool TeleportSilent(TransferTicket ticket, LandingSpot spot)
+    private static bool TeleportSilent(TransferTicket ticket, LandingSpot spot, Vector2? velocity = null)
     {
         if (!float.IsFinite(spot.X) || !float.IsFinite(spot.Y)) return false;
         var server = ticket.ActiveTarget;
         var player = ticket.Session.Player;
         var ts = ticket.Session.TSPlayer;
         var position = new Vector2(spot.X, spot.Y);
-        player.velocity = Vector2.Zero;
+        player.velocity = velocity ?? Vector2.Zero;
         player.fallStart = player.fallStart2 = spot.FeetY;
         player.grappling[0] = -1;
         player.grapCount = 0;
@@ -381,7 +498,7 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
         player.Teleport(server, position, SilentTeleportStyle, 0);
         server.NetMessage.SendData(65, -1, -1, NetworkText.Empty, 0, player.whoAmI,
             spot.X, spot.Y, SilentTeleportStyle, 0, 0);
-        player.velocity = Vector2.Zero;
+        player.velocity = velocity ?? Vector2.Zero;
         player.fallStart = player.fallStart2 = spot.FeetY;
         ts.LastNetPosition = player.position;
         return true;
@@ -543,8 +660,20 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
                 args.Executor.SendInfoMessage("从左到右：" + (_settings.Worlds.Length == 0 ? "尚未设置" : string.Join(" ↔ ", _settings.Worlds)));
                 return;
             case "重载": case "reload":
-                _config?.Reload();
-                args.Executor.SendInfoMessage("已请求重载边界配置；无效配置会被拒绝并记录日志。");
+                if (_config is null) { args.Executor.SendInfoMessage("配置句柄尚未就绪。"); return; }
+                try
+                {
+                    var reloaded = _config.Request(reloadFromIO: true);
+                    if (ApplyConfig(reloaded))
+                        args.Executor.SendInfoMessage("边界配置已重新加载。");
+                    else
+                        args.Executor.SendInfoMessage("配置无效，已保留上次有效配置；详情见服务端日志。");
+                }
+                catch (Exception ex)
+                {
+                    UnifierApi.Logger.Warning("[BoundaryTransfer] 手动重载失败：" + ex.Message);
+                    args.Executor.SendInfoMessage("重载失败，已保留旧配置：" + ex.Message);
+                }
                 return;
             case "排列": case "order":
                 var names = p.Skip(1).ToArray();
@@ -605,5 +734,11 @@ public sealed partial class BoundaryTransferPlugin : BasePlugin
         public volatile bool ClientArrived;
         public long GuardUntil;
         public long LastTeleport;
+        public long NextLandingAt;
+        public int LandingAttempts;
+        public bool PreserveVelocity;
+        public Vector2 EntryVelocity;
+        public string LandingTier = "";
+        public string SpawnMechanism = "关闭";
     }
 }

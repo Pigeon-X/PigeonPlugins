@@ -27,6 +27,7 @@ internal static class Program
             TouchBoundaryTests.Add(cases);
             DirectLandingTests.Add(cases);
             CoastalTests.Add(cases);
+            SeamTests.Add(cases);
             LandingTests.Add(cases);
             FallbackLandingTests.Add(cases);
             HiddenCommandTests.Add(cases);

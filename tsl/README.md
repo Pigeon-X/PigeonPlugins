@@ -7,19 +7,19 @@
 
 | 插件 | 源码 | 版本 |
 |---|---|---|
-| PeaceMode | `tsl/PeaceMode/` | 1.0.0 |
+| PeaceMode | `tsl/PeaceMode/` | 1.0.1 |
 | SignCommand | `tsl/SignCommand/` | 1.2.6（已合并到 CommandTool，停止生产部署） |
-| BoundaryTransfer | `tsl/BoundaryTransfer/` | 1.2.0 |
-| CommandTool | `tsl/CommandTool/` | 2.5.0 |
+| BoundaryTransfer | `tsl/BoundaryTransfer/` | 1.4.1 |
+| CommandTool | `tsl/CommandTool/` | 2.5.1 |
 
-两套源码已与 `_发布/` 中的对应源码包逐文件哈希比对一致。
+以上源码已与 `_发布/` 中的对应源码包逐文件哈希比对一致。
 
 当前本地 Release 构建结果：
 
-- PeaceMode.dll：`D7CDD6932EFFFA223F984D6853CA45353723016530E806881E8E2908876D3D1C`（36,864 B）
+- PeaceMode.dll：`CF77AE600C51B3DF3DBB98ED1A9991B9F903E1C05231B696D7E96CA5B7E6B2F6`（37,888 B）
 - SignCommand.dll：`1822558262137D5593A81624FA588086A10A8DE10B1896FAAFA1FCC903C4B490`（45,568 B）
-- BoundaryTransfer.dll：`678D5B47AEB284071BCD14264C07B987262E89696DB8A26DA8EDD25F87346F00`（60,928 B）
-- CommandTool.dll：`9D416F2475EC0CF6814785EB7842EA8C95689A744EFDFB07383E392DACD6E7B7`（94,720 B）
+- BoundaryTransfer.dll：`24EE32B01BD3292BD955A877E631EA4D5BD754E4089DE41C97060A7D1F798C6F`（73,728 B）
+- CommandTool.dll：`4DC8C65897CAD5E1EAB9710B1D8775B2B0D1B8ECE76852767E17715C18B11B5A`（94,208 B）
 
 ## 构建
 

@@ -75,7 +75,7 @@ public sealed partial class CommandToolPlugin
             foreach(var b in all.Skip((page-1)*10).Take(10))e.SendInfoMessage($"{b.Id} [{(b.Enabled?"启用":"待确认/禁用")}] {b.World} 动作{b.Actions.Count}");
             return;
         }
-        if(sub is "重载" or "reload") {Reload();e.SendInfoMessage("已加载并验证新版统一配置，无效配置不会覆盖上次有效版本。");return;}
+        if(sub is "重载" or "reload") {Reload();e.SendInfoMessage("已请求重载；无效配置会保留上次有效版本，详情见服务端日志。");return;}
         if(sub is "迁移" or "迁移预览")
         {
             if(p.Count<3)throw new ArgumentException("/工具 迁移 <commandtool|signcommand> <旧json完整路径> [归属世界]");
